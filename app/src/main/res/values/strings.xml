@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">59T测试</string>
+    <string name="app_name">888i.com</string>
+    <string name="default_notification_channel_id">fcm_default_channel</string>
+    <string name="msg_token_fmt">FCM注册令牌: %s</string>
 </resources>

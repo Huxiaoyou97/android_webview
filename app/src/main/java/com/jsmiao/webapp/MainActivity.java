@@ -3,26 +3,52 @@ package com.jsmiao.webapp;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.WindowManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.pm.PackageInfoCompat;
 
 import com.fm.openinstall.OpenInstall;
 import com.fm.openinstall.listener.AppInstallAdapter;
 import com.fm.openinstall.model.AppData;
 import com.jsmiao.webapp.controls.MWebView;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.messaging.FirebaseMessaging;
+
 import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
+
     private MWebView mWebView; // webView 控件
     private String bindData = ""; // 用于存储获取的安装参数
+
+    // 声明权限请求启动器
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // FCM SDK可以发送通知
+                    Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
+                } else {
+                    // 通知用户您的应用将不会显示通知
+                    Toast.makeText(this, "Without notification permission, the app will not be able to display notifications", Toast.LENGTH_LONG).show();
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,9 +62,10 @@ public class MainActivity extends AppCompatActivity {
         mWebView = (MWebView) findViewById(R.id.mWebView);
         mWebView.setActivity(this);
 
-//        String url = "https://v2sky602h5.xbnapi.xyz/?sdmode=2"; // 你要加载的 URL
-        String url = "https://v2h5sky501.xbnapi.xyz/?sdmode=2"; // 你要加载的 URL
-//        String url = "https://v2h5sky501.xbnapi.xyz/?vconsole=true"; // 你要加载的 URL
+        String url = "https://888i.bet"; // 603
+//        String url = "https://v2sky602h5.xbnapi.xyz/"; // 602
+//        String url = "https://v2h5sky501.xbnapi.xyz"; // 501
+//        String url = "https://v2h5sky501.xbnapi.xyz/?vconsole=true"; // 501 需要调试时使用
 
         // 配置 WebView
         setupWebView();
@@ -66,6 +93,12 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        // 请求通知权限
+        askNotificationPermission();
+
+        // 获取FCM令牌
+        getFirebaseToken();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -151,6 +184,51 @@ public class MainActivity extends AppCompatActivity {
             mWebView.goBack();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    /**
+     * 获取Firebase消息传递令牌
+     */
+    private void getFirebaseToken() {
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(new OnCompleteListener<String>() {
+                    @Override
+                    public void onComplete(@NonNull Task<String> task) {
+                        if (!task.isSuccessful()) {
+                            Log.w(TAG, "获取FCM注册令牌失败", task.getException());
+                            return;
+                        }
+
+                        // 获取新的FCM注册令牌
+                        String token = task.getResult();
+
+                        // 记录并显示
+                        String msg = getString(R.string.msg_token_fmt, token);
+                        Log.d(TAG, msg);
+                        // Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    /**
+     * 请求通知权限
+     */
+    private void askNotificationPermission() {
+        // 这只对API级别>=33 (TIRAMISU)的设备是必要的
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                // FCM SDK可以发送通知
+            } else if (shouldShowRequestPermissionRationale(android.Manifest.permission.POST_NOTIFICATIONS)) {
+                // 你可以显示一个解释性UI，说明通知的好处
+                // 如果用户点击"确定"，直接请求权限
+                // 这里简单处理，直接请求权限
+                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
+            } else {
+                // 直接请求权限
+                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
+            }
         }
     }
 }
