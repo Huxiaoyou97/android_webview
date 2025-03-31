@@ -4,6 +4,9 @@
     <!-- 访问网络的权限 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- 如果需要写入文件，还需要添加 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <!--    usesCleartextTraffic 明文传输-->
     <!--
@@ -45,7 +48,7 @@
         
         <meta-data
             android:name="com.openinstall.APP_KEY"
-            android:value="uzsup4"/>
+            android:value="js06lg"/>
 
         <activity
             android:name=".MainActivity"
@@ -60,7 +63,7 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="uzsup4"/>
+                <data android:scheme="js06lg"/>
             </intent-filter>
         </activity>
     </application>

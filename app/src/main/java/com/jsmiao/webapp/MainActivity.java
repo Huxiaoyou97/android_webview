@@ -1,12 +1,15 @@
 package com.jsmiao.webapp;
 
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.ClipData;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -37,16 +40,21 @@ public class MainActivity extends AppCompatActivity {
 
     private MWebView mWebView; // webView 控件
     private String bindData = ""; // 用于存储获取的安装参数
+    private WebView webView;
+    private static final int FILE_CHOOSER_RESULT_CODE = 1;
+    private ValueCallback<Uri[]> filePathCallback;
 
     // 声明权限请求启动器
-    private final ActivityResultLauncher<String> requestPermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+    private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
                     // FCM SDK可以发送通知
                     Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
                 } else {
                     // 通知用户您的应用将不会显示通知
-                    Toast.makeText(this, "Without notification permission, the app will not be able to display notifications", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this,
+                            "Without notification permission, the app will not be able to display notifications",
+                            Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -62,16 +70,18 @@ public class MainActivity extends AppCompatActivity {
         mWebView = (MWebView) findViewById(R.id.mWebView);
         mWebView.setActivity(this);
 
-        String url = "https://888i.bet"; // 603
-//        String url = "https://v2sky602h5.xbnapi.xyz/"; // 602
-//        String url = "https://v2h5sky501.xbnapi.xyz"; // 501
-//        String url = "https://v2h5sky501.xbnapi.xyz/?vconsole=true"; // 501 需要调试时使用
-
         // 配置 WebView
         setupWebView();
 
+        // String url = "http://192.168.31.89:6002?web_app=1"; // 测试
+        String url = "https://888i.bet?web_app=1"; // 603
+        // String url = "https://v2sky602h5.xbnapi.xyz?web_app=1"; // 602
+        // String url = "https://v2h5sky501.xbnapi.xyz?web_app=1"; // 501
+        // String url = "https://sky503v2-h5.xbnapi.xyz?web_app=1"; // 503
+        // String url = "https://v2h5sky501.xbnapi.xyz/?vconsole=true"; // 501 需要调试时使用
+
         // 加载url
-        mWebView.loadUrl(url);
+        mWebView.loadUrl(url); // 603
 
         // 获取安装参数
         OpenInstall.getInstall(new AppInstallAdapter() {
@@ -141,6 +151,23 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(WebView view, int newProgress) {
                 super.onProgressChanged(view, newProgress);
             }
+
+            // 处理文件选择
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
+                    FileChooserParams fileChooserParams) {
+                MainActivity.this.filePathCallback = filePathCallback;
+
+                // 创建文件选择Intent
+                Intent intent = fileChooserParams.createIntent();
+                try {
+                    startActivityForResult(intent, FILE_CHOOSER_RESULT_CODE);
+                } catch (ActivityNotFoundException e) {
+                    filePathCallback.onReceiveValue(null);
+                    return false;
+                }
+                return true;
+            }
         });
     }
 
@@ -149,13 +176,15 @@ public class MainActivity extends AppCompatActivity {
         if (bindData != null && !bindData.isEmpty()) {
 
             // 将参数存储到 H5 的 localStorage 中
-            String jsCode =
-                    "localStorage.setItem('web_app', '1');" +
+            String jsCode = "localStorage.setItem('web_app', '1');" +
                     "localStorage.setItem('app_bindData', '" + bindData + "');";
 
             // 注入 JavaScript
             mWebView.evaluateJavascript(jsCode, null);
         }
+
+        // 不管 bindData存不存在都要存储web_app
+        mWebView.evaluateJavascript("localStorage.setItem('web_app', '1');", null);
     }
 
     private Map<String, String> parseUrlParams(String url) {
@@ -217,8 +246,8 @@ public class MainActivity extends AppCompatActivity {
     private void askNotificationPermission() {
         // 这只对API级别>=33 (TIRAMISU)的设备是必要的
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this,
+                    android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 // FCM SDK可以发送通知
             } else if (shouldShowRequestPermissionRationale(android.Manifest.permission.POST_NOTIFICATIONS)) {
                 // 你可以显示一个解释性UI，说明通知的好处
@@ -229,6 +258,42 @@ public class MainActivity extends AppCompatActivity {
                 // 直接请求权限
                 requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
             }
+        }
+    }
+
+    // 处理文件选择结果
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == FILE_CHOOSER_RESULT_CODE) {
+            if (filePathCallback == null) {
+                return;
+            }
+
+            Uri[] results = null;
+
+            // 检查响应
+            if (resultCode == RESULT_OK) {
+                if (data != null) {
+                    String dataString = data.getDataString();
+                    ClipData clipData = data.getClipData();
+
+                    if (clipData != null) {
+                        // 处理多文件选择
+                        results = new Uri[clipData.getItemCount()];
+                        for (int i = 0; i < clipData.getItemCount(); i++) {
+                            results[i] = clipData.getItemAt(i).getUri();
+                        }
+                    } else if (dataString != null) {
+                        // 处理单文件选择
+                        results = new Uri[] { Uri.parse(dataString) };
+                    }
+                }
+            }
+
+            filePathCallback.onReceiveValue(results);
+            filePathCallback = null;
         }
     }
 }
