@@ -27,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
 
         String url;
         // 设置url地址
-        url = "https://wap.agtyapp.com";
+        url = "https://www.kq776.com";
 
         // 配置 WebView
         setupWebView();
