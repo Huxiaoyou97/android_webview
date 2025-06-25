@@ -4,14 +4,7 @@
     <!-- 访问网络的权限 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <!-- 如果需要写入文件，还需要添加 -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
-    <!--    usesCleartextTraffic 明文传输-->
-    <!--
-            android:roundIcon="@mipmap/ic_launcher_round"
-    -->
     <application
         android:name=".MyApplication" 
         android:allowBackup="true"
@@ -21,34 +14,6 @@
         android:theme="@style/Theme.Webapp"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
-        
-        <!-- Firebase Cloud Messaging Service -->
-        <service
-            android:name=".MyFirebaseMessagingService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
-        
-        <!-- FCM默认通知图标 - 使用符合规范的通知图标 -->
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_notification" />
-            
-        <!-- FCM默认通知颜色 -->
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/colorAccent" />
-            
-        <!-- FCM默认通知渠道ID -->
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="@string/default_notification_channel_id" />
-        
-        <meta-data
-            android:name="com.openinstall.APP_KEY"
-            android:value="js06lg"/>
 
         <activity
             android:name=".MainActivity"
@@ -57,13 +22,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="js06lg"/>
             </intent-filter>
         </activity>
     </application>

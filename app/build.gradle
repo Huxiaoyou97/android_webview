@@ -1,5 +1,4 @@
 apply plugin: 'com.android.application'
-apply plugin: 'com.google.gms.google-services'
 
 def keystorePropertiesFile = rootProject.file("key.properties")
 def keystoreProperties = new Properties()
@@ -50,14 +49,13 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             
             // 自定义APK输出名称
             applicationVariants.all { variant ->
                 variant.outputs.all {
-                    // outputFileName = "603-release-2.0.2.apk"
-                    outputFileName = "603app.apk"
+                    outputFileName = "app.apk"
                 }
             }
         }
@@ -72,18 +70,8 @@ android {
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:32.0.0')
-    implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.firebase:firebase-messaging'
-    
-    // 指定较低版本的Activity库
-    implementation 'androidx.activity:activity:1.7.2'
-    
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-//    implementation("com.openinstallglobal.sdk:android-sdk:1.0.0")
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
