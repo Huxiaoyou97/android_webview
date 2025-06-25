@@ -74,10 +74,10 @@ public class MainActivity extends AppCompatActivity {
         setupWebView();
 
         // String url = "http://192.168.31.89:6002?web_app=1"; // 测试
-//        String url = "https://888i.bet?web_app=1"; // 603
+        String url = "https://888i.bet?web_app=1"; // 603
         // String url = "https://v2sky602h5.xbnapi.xyz?web_app=1"; // 602
         // String url = "https://v2h5sky501.xbnapi.xyz?web_app=1"; // 501
-         String url = "https://sky503v2-h5.xbnapi.xyz?web_app=1"; // 503
+        // String url = "https://sky503v2-h5.xbnapi.xyz?web_app=1"; // 503
         // String url = "https://v2h5sky501.xbnapi.xyz/?vconsole=true"; // 501 需要调试时使用
 
         // 加载url

@@ -19,6 +19,16 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 禁用APK拆分，生成单一APK文件
+        splits {
+            abi {
+                enable false
+                reset()
+                include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+                universalApk true
+            }
+        }
     }
 
     signingConfigs {
@@ -27,13 +37,32 @@ android {
             keyPassword keystoreProperties['keyPassword']
             storeFile file(keystoreProperties['storeFile'])
             storePassword keystoreProperties['storePassword']
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+        
+        debug {
+            v1SigningEnabled true
+            v2SigningEnabled true
         }
     }
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // 自定义APK输出名称
+            applicationVariants.all { variant ->
+                variant.outputs.all {
+                    // outputFileName = "603-release-2.0.2.apk"
+                    outputFileName = "603app.apk"
+                }
+            }
+        }
+        debug {
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
