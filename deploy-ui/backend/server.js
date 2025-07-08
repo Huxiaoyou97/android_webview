@@ -244,15 +244,17 @@ const buildAPK = async (appName, appUrl, iconPath) => {
           // 查找生成的APK文件
           const apkFile = path.join(deployDir, 'app-release.apk')
           if (fs.existsSync(apkFile)) {
-            // 复制APK到public目录供下载
-            const publicApkPath = path.join(publicDir, `${buildId}.apk`)
+            // 使用应用名称作为APK文件名
+            const safeAppName = appName.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_')
+            const apkFileName = `${safeAppName}_${buildId.substring(0,8)}.apk`
+            const publicApkPath = path.join(publicDir, apkFileName)
             fs.copyFileSync(apkFile, publicApkPath)
             
             // 将生成的APK添加到清理队列
             addToCleanupQueue(publicApkPath)
             
             buildStatus.success = true
-            buildStatus.downloadUrl = `/api/download/${buildId}.apk`
+            buildStatus.downloadUrl = `/api/download/${apkFileName}`
             addLog('APK文件已准备好下载')
           } else {
             addLog('未找到生成的APK文件', 'error')
@@ -348,6 +350,9 @@ app.get('/api/download/:filename', (req, res) => {
   const filePath = path.join(publicDir, filename)
   
   if (fs.existsSync(filePath)) {
+    // 设置正确的文件名和类型
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.download(filePath, filename, (err) => {
       if (err) {
         console.error('Download error:', err)

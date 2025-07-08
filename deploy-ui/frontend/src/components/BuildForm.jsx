@@ -33,7 +33,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
       if (!file.type.startsWith('image/')) {
         setErrors(prev => ({
           ...prev,
-          appIcon: 'Please select a valid image file'
+          appIcon: '请选择有效的图片文件'
         }))
         return
       }
@@ -42,7 +42,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
       if (file.size > 2 * 1024 * 1024) {
         setErrors(prev => ({
           ...prev,
-          appIcon: 'Image size must be less than 2MB'
+          appIcon: '图片大小不能超过2MB'
         }))
         return
       }
@@ -71,22 +71,22 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
     const newErrors = {}
 
     if (!formData.appName.trim()) {
-      newErrors.appName = 'App name is required'
+      newErrors.appName = '请输入应用名称'
     }
 
 
     if (!formData.appUrl.trim()) {
-      newErrors.appUrl = 'App URL is required'
+      newErrors.appUrl = '请输入网站URL'
     } else {
       try {
         new URL(formData.appUrl)
       } catch {
-        newErrors.appUrl = 'Please enter a valid URL'
+        newErrors.appUrl = '请输入有效的URL地址'
       }
     }
 
     if (!formData.appIcon) {
-      newErrors.appIcon = 'App icon is required'
+      newErrors.appIcon = '请选择应用图标'
     }
 
     setErrors(newErrors)
@@ -129,7 +129,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
     } catch (error) {
       onBuildComplete(false)
       setErrors({ 
-        submit: error.response?.data?.error || 'Network error occurred' 
+        submit: error.response?.data?.error || '网络连接失败' 
       })
     }
   }
@@ -175,12 +175,12 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
 
   return (
     <div className="card">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Build Your App</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">构建你的应用</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="appName" className="block text-sm font-medium text-gray-700 mb-2">
-            App Name *
+            应用名称 *
           </label>
           <input
             type="text"
@@ -189,7 +189,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
             value={formData.appName}
             onChange={handleInputChange}
             className={`input-field ${errors.appName ? 'border-red-500' : ''}`}
-            placeholder="My Awesome App"
+            placeholder="我的应用"
             disabled={isBuilding}
           />
           {errors.appName && <p className="text-red-500 text-sm mt-1">{errors.appName}</p>}
@@ -198,7 +198,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
 
         <div>
           <label htmlFor="appUrl" className="block text-sm font-medium text-gray-700 mb-2">
-            Website URL *
+            网站URL *
           </label>
           <input
             type="url"
@@ -215,7 +215,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
 
         <div>
           <label htmlFor="appIcon" className="block text-sm font-medium text-gray-700 mb-2">
-            App Icon *
+            应用图标 *
           </label>
           <div className="flex items-start space-x-4">
             <div className="flex-1">
@@ -239,7 +239,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   <span className="text-sm text-gray-500">
-                    Click to upload icon
+                    点击上传图标
                   </span>
                 </div>
               </button>
@@ -256,7 +256,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
           </div>
           {errors.appIcon && <p className="text-red-500 text-sm mt-1">{errors.appIcon}</p>}
           <p className="text-gray-500 text-xs mt-1">
-            PNG, JPG, or SVG. Max 2MB. Recommended: 512x512px
+            支持PNG、JPG格式，最大2MB，推荐尺寸512x512像素
           </p>
         </div>
 
@@ -278,10 +278,10 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>Building...</span>
+                <span>构建中...</span>
               </span>
             ) : (
-              'Build APK'
+              '开始构建APK'
             )}
           </button>
           <button
@@ -290,7 +290,7 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
             disabled={isBuilding}
             className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Clear
+            清空表单
           </button>
         </div>
       </form>
