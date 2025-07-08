@@ -47,21 +47,22 @@ RUN yes | sdkmanager --licenses && \
 # 设置工作目录
 WORKDIR /app
 
+# 先复制并安装后端依赖
+COPY backend/package*.json ./
+RUN npm install --production
+
 # 构建前端
-COPY ../frontend/package*.json ./frontend/
+COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install
 
-COPY ../frontend ./frontend/
+COPY frontend ./frontend/
 RUN cd frontend && npm run build
 
-# 复制前端构建结果到后端
+# 复制前端构建结果
 RUN cp -r frontend/dist ./dist
 
 # 复制后端代码
-COPY package*.json ./
-RUN yarn install --production
-
-COPY . .
+COPY backend .
 
 # 创建必要的目录
 RUN mkdir -p uploads builds public
@@ -70,4 +71,4 @@ RUN mkdir -p uploads builds public
 EXPOSE 3001
 
 # 启动应用
-CMD ["yarn", "start"]
+CMD ["node", "server.js"]
