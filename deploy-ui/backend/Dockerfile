@@ -47,16 +47,15 @@ RUN yes | sdkmanager --licenses && \
 # 设置工作目录
 WORKDIR /app
 
-# 先构建前端
+# 构建前端
 COPY ../frontend/package*.json ./frontend/
-COPY ../frontend/yarn.lock ./frontend/
-RUN cd frontend && yarn install
+RUN cd frontend && npm install
 
 COPY ../frontend ./frontend/
-RUN cd frontend && yarn build
+RUN cd frontend && npm run build
 
 # 复制前端构建结果到后端
-RUN cp -r frontend/dist ./
+RUN cp -r frontend/dist ./dist
 
 # 复制后端代码
 COPY package*.json ./

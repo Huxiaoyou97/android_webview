@@ -12,7 +12,8 @@
       "Bash(docker exec:*)",
       "Bash(curl:*)",
       "Bash(docker stats:*)",
-      "Bash(./auto_build.sh:*)"
+      "Bash(./auto_build.sh:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
