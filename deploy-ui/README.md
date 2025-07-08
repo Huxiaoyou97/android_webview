@@ -11,6 +11,7 @@
 - ⬇️ **即时下载**：构建完成立即提供APK下载
 - 🐳 **Docker部署**：容器化部署，环境隔离
 - 🔄 **自动化流程**：从上传到构建到下载的完整自动化
+- 🧹 **自动清理**：上传文件和APK自动在10分钟后删除，节省存储空间
 
 ## 🏗️ 系统架构
 
@@ -186,6 +187,32 @@ Response:
 
 ```http
 GET /api/download/:filename
+```
+
+### 清理状态
+
+```http
+GET /api/cleanup/status
+
+Response:
+{
+  "pendingCleanup": number,
+  "files": array,
+  "nextCleanupIn": number
+}
+```
+
+### 手动清理
+
+```http
+POST /api/cleanup/manual
+
+Response:
+{
+  "message": string,
+  "cleanedFiles": number,
+  "remainingFiles": number
+}
 ```
 
 ## 🛠️ 自定义配置

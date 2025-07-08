@@ -25,6 +25,9 @@ const buildStatus = {
   buildId: null
 }
 
+// 文件清理记录
+const fileCleanupQueue = new Map() // 存储文件路径和过期时间
+
 // 中间件
 app.use(cors())
 app.use(express.json())
@@ -77,6 +80,74 @@ const addLog = (message, type = 'info') => {
   buildStatus.logs.push(logEntry)
   console.log(`[${timestamp}] ${message}`)
 }
+
+// 添加文件到清理队列
+const addToCleanupQueue = (filePath, delayMinutes = 10) => {
+  const expireTime = Date.now() + (delayMinutes * 60 * 1000)
+  fileCleanupQueue.set(filePath, expireTime)
+  console.log(`文件 ${filePath} 将在 ${delayMinutes} 分钟后被清理`)
+}
+
+// 清理过期文件
+const cleanupExpiredFiles = () => {
+  const now = Date.now()
+  const filesToDelete = []
+
+  for (const [filePath, expireTime] of fileCleanupQueue.entries()) {
+    if (now >= expireTime) {
+      filesToDelete.push(filePath)
+    }
+  }
+
+  filesToDelete.forEach(filePath => {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath)
+        console.log(`✅ 已清理文件: ${filePath}`)
+      }
+      fileCleanupQueue.delete(filePath)
+    } catch (error) {
+      console.error(`❌ 清理文件失败 ${filePath}:`, error.message)
+    }
+  })
+
+  if (filesToDelete.length > 0) {
+    console.log(`🧹 本次清理了 ${filesToDelete.length} 个文件`)
+  }
+}
+
+// 清理上传目录中的旧文件
+const cleanupUploadsDirectory = () => {
+  try {
+    const files = fs.readdirSync(uploadsDir)
+    const now = Date.now()
+    const maxAge = 10 * 60 * 1000 // 10分钟
+
+    files.forEach(file => {
+      const filePath = path.join(uploadsDir, file)
+      const stats = fs.statSync(filePath)
+      
+      if (now - stats.mtime.getTime() > maxAge) {
+        try {
+          fs.unlinkSync(filePath)
+          console.log(`🧹 清理上传文件: ${file}`)
+        } catch (error) {
+          console.error(`清理上传文件失败 ${file}:`, error.message)
+        }
+      }
+    })
+  } catch (error) {
+    console.error('清理上传目录失败:', error.message)
+  }
+}
+
+// 启动定时清理任务
+setInterval(() => {
+  cleanupExpiredFiles()
+  cleanupUploadsDirectory()
+}, 60 * 1000) // 每分钟检查一次
+
+console.log('🧹 文件清理服务已启动，每分钟检查一次过期文件')
 
 // 处理图标尺寸
 const processIcon = async (inputPath, outputPath) => {
@@ -174,6 +245,9 @@ const buildAPK = async (appName, appUrl, iconPath) => {
             const publicApkPath = path.join(publicDir, `${buildId}.apk`)
             fs.copyFileSync(apkFile, publicApkPath)
             
+            // 将生成的APK添加到清理队列
+            addToCleanupQueue(publicApkPath)
+            
             buildStatus.success = true
             buildStatus.downloadUrl = `/api/download/${buildId}.apk`
             addLog('APK文件已准备好下载')
@@ -241,6 +315,10 @@ app.post('/api/build', upload.single('icon'), async (req, res) => {
       return res.status(400).json({ error: '图标处理失败' })
     }
     
+    // 将上传的文件和处理后的图标添加到清理队列
+    addToCleanupQueue(iconFile.path)
+    addToCleanupQueue(processedIconPath)
+    
     // 异步构建APK
     buildAPK(appName, appUrl, processedIconPath)
       .catch(error => {
@@ -280,6 +358,36 @@ app.get('/api/download/:filename', (req, res) => {
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// 清理状态API
+app.get('/api/cleanup/status', (req, res) => {
+  const now = Date.now()
+  const pendingFiles = Array.from(fileCleanupQueue.entries()).map(([path, expireTime]) => ({
+    path: path.replace(__dirname, ''),
+    expiresIn: Math.max(0, Math.floor((expireTime - now) / 1000 / 60)), // 分钟
+    size: fs.existsSync(path) ? fs.statSync(path).size : 0
+  }))
+
+  res.json({
+    pendingCleanup: pendingFiles.length,
+    files: pendingFiles,
+    nextCleanupIn: pendingFiles.length > 0 ? Math.min(...pendingFiles.map(f => f.expiresIn)) : 0
+  })
+})
+
+// 手动清理API
+app.post('/api/cleanup/manual', (req, res) => {
+  const before = fileCleanupQueue.size
+  cleanupExpiredFiles()
+  cleanupUploadsDirectory()
+  const after = fileCleanupQueue.size
+  
+  res.json({
+    message: '手动清理完成',
+    cleanedFiles: before - after,
+    remainingFiles: after
+  })
 })
 
 app.listen(PORT, '0.0.0.0', () => {
