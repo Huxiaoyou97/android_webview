@@ -4,9 +4,6 @@ FROM node:20-alpine
 # 设置工作目录
 WORKDIR /app
 
-# 安装yarn
-RUN npm install -g yarn
-
 # 复制 package.json 和 yarn.lock
 COPY package*.json ./
 COPY yarn.lock* ./
