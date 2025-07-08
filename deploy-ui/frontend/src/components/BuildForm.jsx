@@ -118,35 +118,42 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
         }
       })
 
-      if (response.data.success) {
-        // Start polling for build progress
-        pollBuildProgress(response.data.buildId)
+      // 检查响应状态
+      if (response.status === 200 && response.data.message) {
+        // 开始轮询构建状态
+        pollBuildProgress()
       } else {
         onBuildComplete(false)
-        setErrors({ submit: response.data.message || 'Build failed' })
+        setErrors({ submit: response.data.error || 'Build failed' })
       }
     } catch (error) {
       onBuildComplete(false)
       setErrors({ 
-        submit: error.response?.data?.message || 'Network error occurred' 
+        submit: error.response?.data?.error || 'Network error occurred' 
       })
     }
   }
 
-  const pollBuildProgress = async (buildId) => {
+  const pollBuildProgress = async () => {
     try {
-      const response = await axios.get(`/api/build/${buildId}/progress`)
-      const { progress, log, status, downloadUrl } = response.data
+      const response = await axios.get('/api/build/status')
+      const { isBuilding, progress, logs, completed, success, downloadUrl } = response.data
 
-      onBuildProgress(progress, log)
+      // 更新进度和日志
+      const latestLog = logs.length > 0 ? logs[logs.length - 1].message : ''
+      onBuildProgress(progress, latestLog)
 
-      if (status === 'completed') {
-        onBuildComplete(true, downloadUrl)
-      } else if (status === 'failed') {
-        onBuildComplete(false)
+      if (completed) {
+        if (success) {
+          onBuildComplete(true, downloadUrl)
+        } else {
+          onBuildComplete(false)
+        }
+      } else if (isBuilding) {
+        // 继续轮询
+        setTimeout(() => pollBuildProgress(), 2000)
       } else {
-        // Continue polling
-        setTimeout(() => pollBuildProgress(buildId), 1000)
+        onBuildComplete(false)
       }
     } catch (error) {
       onBuildComplete(false)

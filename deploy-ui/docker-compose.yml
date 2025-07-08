@@ -10,7 +10,7 @@ services:
       - ./uploads:/app/uploads
       - ./apks:/app/apks
       - ../deploy/auto_build.sh:/app/auto_build.sh
-      - ../:/app/android-project
+      - ../:/app/workspace
     environment:
       - NODE_ENV=production
       - PORT=3001

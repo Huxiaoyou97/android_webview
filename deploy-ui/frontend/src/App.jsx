@@ -20,7 +20,7 @@ function App() {
 
   const handleBuildProgress = (progress, log) => {
     setBuildProgress(progress)
-    setBuildLog(prev => prev + log + '\n')
+    setBuildLog(log)
   }
 
   const handleBuildComplete = (success, downloadUrl = '') => {

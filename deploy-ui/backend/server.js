@@ -177,7 +177,7 @@ const processIcon = async (inputPath, outputPath) => {
 const buildAPK = async (appName, appUrl, iconPath) => {
   return new Promise((resolve, reject) => {
     const buildId = uuidv4()
-    const projectDir = '/workspace/android-webapp'  // 挂载的项目目录
+    const projectDir = '/app/workspace'  // 挂载的项目目录
     const deployDir = path.join(projectDir, 'deploy')
     const configFile = path.join(deployDir, 'config.json')
     const iconFile = path.join(deployDir, 'icon.png')
