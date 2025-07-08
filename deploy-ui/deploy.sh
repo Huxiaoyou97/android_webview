@@ -15,7 +15,7 @@ echo "4. 启动服务..."
 docker-compose up -d
 
 echo "5. 等待服务启动..."
-sleep 20
+sleep 5
 
 echo "6. 检查服务状态..."
 docker-compose ps
