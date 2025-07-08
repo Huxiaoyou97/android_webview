@@ -9,22 +9,27 @@ COPY package*.json ./
 COPY yarn.lock* ./
 
 # 安装依赖
-RUN yarn install
+RUN yarn install --frozen-lockfile
 
 # 复制应用代码
 COPY . .
 
-# 构建生产版本
-RUN yarn build
+# 构建生产版本 - 详细输出
+RUN echo "开始构建..." && \
+    yarn build && \
+    echo "构建完成，检查结果..." && \
+    ls -la dist/ && \
+    echo "检查index.html..." && \
+    ls -la dist/index.html
 
-# 检查构建结果
-RUN ls -la dist/
+# 验证构建结果
+RUN test -f dist/index.html || (echo "ERROR: dist/index.html not found" && exit 1)
 
-# 安装serve来服务静态文件
-RUN yarn global add serve
+# 全局安装serve
+RUN npm install -g serve
 
 # 暴露端口
 EXPOSE 3000
 
-# 启动应用 - 如果dist不存在则使用当前目录
-CMD ["sh", "-c", "if [ -d dist ]; then serve -s dist -l 3000; else echo 'dist not found, using current dir' && serve -s . -l 3000; fi"]
+# 启动应用
+CMD ["serve", "-s", "dist", "-l", "3000"]
