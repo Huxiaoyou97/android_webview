@@ -6,7 +6,7 @@ echo "1. 停止服务..."
 docker-compose down
 
 echo "2. 清理镜像..."
-docker rmi deploy-ui-backend 2>/dev/null || echo "镜像已清理"
+docker rmi deploy-ui-backend deploy-ui-nginx 2>/dev/null || echo "镜像已清理"
 
 echo "3. 构建应用 (包含前端)..."
 docker-compose build --no-cache

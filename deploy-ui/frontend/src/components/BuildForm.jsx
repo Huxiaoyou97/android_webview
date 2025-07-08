@@ -4,7 +4,6 @@ import axios from 'axios'
 const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding }) => {
   const [formData, setFormData] = useState({
     appName: '',
-    packageName: '',
     appUrl: '',
     appIcon: null
   })
@@ -75,11 +74,6 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
       newErrors.appName = 'App name is required'
     }
 
-    if (!formData.packageName.trim()) {
-      newErrors.packageName = 'Package name is required'
-    } else if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(formData.packageName)) {
-      newErrors.packageName = 'Invalid package name format (e.g., com.example.myapp)'
-    }
 
     if (!formData.appUrl.trim()) {
       newErrors.appUrl = 'App URL is required'
@@ -108,9 +102,8 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
 
     const submitData = new FormData()
     submitData.append('appName', formData.appName)
-    submitData.append('packageName', formData.packageName)
     submitData.append('appUrl', formData.appUrl)
-    submitData.append('appIcon', formData.appIcon)
+    submitData.append('icon', formData.appIcon)
 
     try {
       onBuildStart(formData.appName)
@@ -163,7 +156,6 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
   const clearForm = () => {
     setFormData({
       appName: '',
-      packageName: '',
       appUrl: '',
       appIcon: null
     })
@@ -196,25 +188,6 @@ const BuildForm = ({ onBuildStart, onBuildProgress, onBuildComplete, isBuilding 
           {errors.appName && <p className="text-red-500 text-sm mt-1">{errors.appName}</p>}
         </div>
 
-        <div>
-          <label htmlFor="packageName" className="block text-sm font-medium text-gray-700 mb-2">
-            Package Name *
-          </label>
-          <input
-            type="text"
-            id="packageName"
-            name="packageName"
-            value={formData.packageName}
-            onChange={handleInputChange}
-            className={`input-field ${errors.packageName ? 'border-red-500' : ''}`}
-            placeholder="com.example.myapp"
-            disabled={isBuilding}
-          />
-          {errors.packageName && <p className="text-red-500 text-sm mt-1">{errors.packageName}</p>}
-          <p className="text-gray-500 text-xs mt-1">
-            Use reverse domain notation (e.g., com.yourcompany.appname)
-          </p>
-        </div>
 
         <div>
           <label htmlFor="appUrl" className="block text-sm font-medium text-gray-700 mb-2">
