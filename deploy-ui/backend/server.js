@@ -33,6 +33,9 @@ app.use(cors())
 app.use(express.json())
 app.use(express.static(path.join(__dirname, 'public')))
 
+// 服务前端静态文件
+app.use(express.static(path.join(__dirname, 'dist')))
+
 // 创建必要的目录
 const uploadsDir = path.join(__dirname, 'uploads')
 const buildsDir = path.join(__dirname, 'builds')
@@ -388,6 +391,11 @@ app.post('/api/cleanup/manual', (req, res) => {
     cleanedFiles: before - after,
     remainingFiles: after
   })
+})
+
+// 前端路由回退 - 处理SPA路由
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'))
 })
 
 app.listen(PORT, '0.0.0.0', () => {

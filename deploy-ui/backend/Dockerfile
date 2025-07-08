@@ -47,13 +47,21 @@ RUN yes | sdkmanager --licenses && \
 # 设置工作目录
 WORKDIR /app
 
-# 复制package.json
-COPY package*.json ./
+# 先构建前端
+COPY ../frontend/package*.json ./frontend/
+COPY ../frontend/yarn.lock ./frontend/
+RUN cd frontend && yarn install
 
-# 安装Node.js依赖
+COPY ../frontend ./frontend/
+RUN cd frontend && yarn build
+
+# 复制前端构建结果到后端
+RUN cp -r frontend/dist ./
+
+# 复制后端代码
+COPY package*.json ./
 RUN yarn install --production
 
-# 复制应用代码
 COPY . .
 
 # 创建必要的目录
