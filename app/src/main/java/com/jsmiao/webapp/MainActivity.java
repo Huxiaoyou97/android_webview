@@ -38,7 +38,13 @@ public class MainActivity extends AppCompatActivity {
         // 配置 WebView
         setupWebView();
 
-        String url = "https://888i.bet?web_app=1"; // 603
+        // String url = "http://192.168.31.89:6002?web_app=1"; // 测试
+        // String url = "https://888i.bet?web_app=1"; // 603
+        // String url = "https://v2sky602h5.xbnapi.xyz?web_app=1"; // 602
+        // String url = "https://v2h5sky501.xbnapi.xyz?web_app=1"; // 501
+        // String url = "https://sky503v2-h5.xbnapi.xyz?web_app=1"; // 503
+        // String url = "https://v2h5sky501.xbnapi.xyz/?vconsole=true"; // 501 需要调试时使用
+        String url = "https://777q.app?sdmode=2&web_app=1"; // 605
 
         // 加载url
         mWebView.loadUrl(url);
