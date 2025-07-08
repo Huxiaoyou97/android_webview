@@ -1,0 +1,66 @@
+# 依赖
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 构建输出
+frontend/dist/
+frontend/build/
+backend/builds/
+backend/uploads/
+backend/public/
+
+# 环境变量
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+*.log
+logs/
+
+# 编辑器配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# 备份文件
+*.backup
+*.bak
+
+# APK文件（开发期间）
+*.apk
+
+# Android构建产物
+app/build/
+app/release/
+.gradle/
+local.properties
+
+# 密钥文件（安全考虑）
+*.jks
+*.keystore
+key.properties
