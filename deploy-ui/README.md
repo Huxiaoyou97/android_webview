@@ -62,8 +62,8 @@ cd android-webapp/deploy-ui
 ```
 
 启动完成后，访问：
-- **Web界面**: http://localhost
-- **API接口**: http://localhost/api
+- **Web界面**: http://localhost (Nginx代理到前端3000端口)
+- **API接口**: http://localhost/api (Nginx代理到后端3001端口)
 
 ### 4. 使用平台
 
@@ -106,9 +106,9 @@ deploy-ui/
 
 ### 服务组件
 
-- **frontend**: React前端应用 (端口3000)
-- **backend**: Node.js API服务 (端口3001)
-- **nginx**: 反向代理服务器 (端口80)
+- **frontend**: React前端应用 (内部端口3000)
+- **backend**: Node.js API服务 (内部端口3001)
+- **nginx**: 反向代理服务器 (对外端口80)
 
 ### 常用命令
 

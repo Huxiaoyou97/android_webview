@@ -103,7 +103,7 @@ const processIcon = async (inputPath, outputPath) => {
 const buildAPK = async (appName, appUrl, iconPath) => {
   return new Promise((resolve, reject) => {
     const buildId = uuidv4()
-    const projectDir = path.resolve(__dirname, '../../')
+    const projectDir = '/workspace/android-webapp'  // 挂载的项目目录
     const deployDir = path.join(projectDir, 'deploy')
     const configFile = path.join(deployDir, 'config.json')
     const iconFile = path.join(deployDir, 'icon.png')
@@ -137,15 +137,19 @@ const buildAPK = async (appName, appUrl, iconPath) => {
           
           // 更新进度
           if (output.includes('正在替换应用图标')) {
-            buildStatus.progress = 20
+            buildStatus.progress = 10
           } else if (output.includes('正在修改')) {
-            buildStatus.progress = 40
+            buildStatus.progress = 20
           } else if (output.includes('正在清理')) {
-            buildStatus.progress = 50
+            buildStatus.progress = 30
           } else if (output.includes('开始构建APK')) {
-            buildStatus.progress = 60
+            buildStatus.progress = 40
+          } else if (output.includes('Welcome to Gradle')) {
+            buildStatus.progress = 50
+          } else if (output.includes('Task :')) {
+            buildStatus.progress = Math.min(buildStatus.progress + 2, 85)
           } else if (output.includes('BUILD SUCCESSFUL')) {
-            buildStatus.progress = 90
+            buildStatus.progress = 95
           } else if (output.includes('构建完成')) {
             buildStatus.progress = 100
           }

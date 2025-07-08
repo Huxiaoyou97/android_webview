@@ -23,8 +23,15 @@ ENV PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 # 创建Android SDK目录
 RUN mkdir -p $ANDROID_HOME
 
-# 下载并安装Android SDK命令行工具
-RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/tools.zip && \
+# 检测架构并下载对应的Android SDK命令行工具
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+        echo "Detected ARM64 architecture" && \
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/tools.zip; \
+    else \
+        echo "Detected x86_64 architecture" && \
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/tools.zip; \
+    fi && \
     unzip -q /tmp/tools.zip -d $ANDROID_HOME && \
     rm /tmp/tools.zip && \
     mv $ANDROID_HOME/cmdline-tools $ANDROID_HOME/latest && \
@@ -44,7 +51,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安装Node.js依赖
-RUN npm ci --only=production
+RUN yarn install --production
 
 # 复制应用代码
 COPY . .
@@ -56,4 +63,4 @@ RUN mkdir -p uploads builds public
 EXPOSE 3001
 
 # 启动应用
-CMD ["npm", "start"]
+CMD ["yarn", "start"]

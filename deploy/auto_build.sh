@@ -10,25 +10,17 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # 配置文件路径
 CONFIG_FILE="$SCRIPT_DIR/config.json"
 
-# 检查是否安装了jq（用于解析JSON）
-if ! command -v jq &> /dev/null; then
-    echo "错误：请先安装 jq 工具来解析JSON配置文件"
-    echo "在 macOS 上: brew install jq"
-    echo "在 Ubuntu 上: sudo apt-get install jq"
-    exit 1
-fi
-
 # 检查配置文件是否存在
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "错误：配置文件 $CONFIG_FILE 不存在"
     exit 1
 fi
 
-# 读取配置文件
+# 读取配置文件（使用Python解析JSON）
 echo "正在读取配置文件..."
-APP_NAME=$(jq -r '.app_name' "$CONFIG_FILE")
-APP_URL=$(jq -r '.app_url' "$CONFIG_FILE")
-ICON_FILE=$(jq -r '.icon_file' "$CONFIG_FILE")
+APP_NAME=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['app_name'])")
+APP_URL=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['app_url'])")
+ICON_FILE=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['icon_file'])")
 
 # 验证配置
 if [ "$APP_NAME" = "null" ] || [ "$APP_URL" = "null" ] || [ "$ICON_FILE" = "null" ]; then

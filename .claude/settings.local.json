@@ -3,7 +3,16 @@
     "allow": [
       "Bash(chmod:*)",
       "Bash(rm:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose:*)",
+      "Bash(yarn install)",
+      "Bash(/Users/huxiaoyou/Desktop/xiaoyou/android-webapp/deploy-ui/start.sh)",
+      "Bash(docker exec:*)",
+      "Bash(curl:*)",
+      "Bash(docker stats:*)",
+      "Bash(./auto_build.sh:*)"
     ],
     "deny": []
   }

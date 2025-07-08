@@ -4,20 +4,24 @@ FROM node:18-alpine
 # 设置工作目录
 WORKDIR /app
 
-# 复制 package.json 和 package-lock.json
+# 复制 package.json 和 yarn.lock
 COPY package*.json ./
+COPY yarn.lock* ./
 
 # 安装依赖
-RUN npm ci --only=production
+RUN yarn install
 
 # 复制应用代码
 COPY . .
 
 # 构建生产版本
-RUN npm run build
+RUN yarn build
+
+# 检查构建结果
+RUN ls -la dist/
 
 # 安装serve来服务静态文件
-RUN npm install -g serve
+RUN yarn global add serve
 
 # 暴露端口
 EXPOSE 3000
