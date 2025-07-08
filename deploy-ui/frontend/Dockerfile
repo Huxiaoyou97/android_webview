@@ -26,5 +26,5 @@ RUN yarn global add serve
 # 暴露端口
 EXPOSE 3000
 
-# 启动应用
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# 启动应用 - 如果dist不存在则使用当前目录
+CMD ["sh", "-c", "if [ -d dist ]; then serve -s dist -l 3000; else echo 'dist not found, using current dir' && serve -s . -l 3000; fi"]
