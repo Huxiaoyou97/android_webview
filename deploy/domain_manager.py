@@ -28,15 +28,28 @@ class DomainManager:
     
     def _load_configs(self):
         """加载域名配置"""
-        if os.path.exists(self.config_file):
-            with open(self.config_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return {}
+        try:
+            if os.path.exists(self.config_file) and os.path.getsize(self.config_file) > 0:
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        return json.loads(content)
+            # 如果文件不存在或为空，创建空配置
+            return {}
+        except (json.JSONDecodeError, FileNotFoundError, IOError) as e:
+            print(f"警告: 配置文件读取失败: {e}")
+            # 重新创建配置文件
+            return {}
     
     def _save_configs(self):
         """保存域名配置"""
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump(self.configs, f, indent=2, ensure_ascii=False)
+        try:
+            # 确保目录存在
+            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(self.configs, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            print(f"警告: 配置文件保存失败: {e}")
     
     def _url_to_domain(self, url):
         """从URL提取域名"""
@@ -99,6 +112,16 @@ class DomainManager:
         # 生成密钥参数
         alias = domain.replace('.', '').replace('-', '')[:20]  # 限制别名长度
         password = hashlib.sha256(domain.encode()).hexdigest()[:16]  # 生成16位密码
+        
+        # 检查keytool是否可用
+        try:
+            subprocess.run(['keytool', '-version'], capture_output=True, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print(f"警告: keytool不可用，将在需要时生成签名文件")
+            # 创建一个占位文件，实际签名由构建过程处理
+            with open(keystore_path, 'w') as f:
+                f.write("# Placeholder keystore file\n")
+            return keystore_path
         
         # 生成keystore
         cmd = [

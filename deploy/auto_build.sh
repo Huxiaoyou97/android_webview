@@ -43,26 +43,51 @@ echo "  图标文件: $ICON_FILE"
 # 获取域名配置
 echo ""
 echo "🔧 获取域名配置..."
-DOMAIN_CONFIG=$(python3 "$DOMAIN_MANAGER" get "$APP_URL")
-if [ $? -ne 0 ]; then
-    echo "❌ 获取域名配置失败"
-    exit 1
+DOMAIN_CONFIG=$(python3 "$DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$DOMAIN_CONFIG" ]; then
+    echo "❌ 获取域名配置失败，尝试重新初始化..."
+    
+    # 确保domain_configs.json文件存在且格式正确
+    if [ ! -f "$SCRIPT_DIR/domain_configs.json" ] || [ ! -s "$SCRIPT_DIR/domain_configs.json" ]; then
+        echo "{}" > "$SCRIPT_DIR/domain_configs.json"
+        echo "✅ 已初始化domain_configs.json文件"
+    fi
+    
+    # 重新尝试获取配置
+    DOMAIN_CONFIG=$(python3 "$DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
+    if [ $? -ne 0 ] || [ -z "$DOMAIN_CONFIG" ]; then
+        echo "❌ 仍然无法获取域名配置，使用默认配置"
+        
+        # 使用默认配置
+        DOMAIN="default"
+        PACKAGE_NAME="com.jsmiao.webapp"
+        KEYSTORE_PATH="../bluetooth.jks"
+        KEYSTORE_PASSWORD="Appsdotapps"
+        KEY_ALIAS="bluetooth"
+        KEY_PASSWORD="Appsdotapps"
+    else
+        echo "✅ 重新获取域名配置成功"
+    fi
+else
+    echo "✅ 获取域名配置成功"
 fi
 
-# 解析域名配置
-DOMAIN=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['domain'])")
-PACKAGE_NAME=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['package_name'])")
-KEYSTORE_PATH=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['keystore_path'])")
-KEYSTORE_PASSWORD=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['keystore_password'])")
-KEY_ALIAS=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_alias'])")
-KEY_PASSWORD=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_password'])")
-
-# 在Docker环境中，需要转换路径格式
-# 将 /Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/ 转换为相对路径
-KEYSTORE_RELATIVE_PATH=$(basename "$KEYSTORE_PATH")
-if [[ "$KEYSTORE_PATH" == *"/deploy/keystores/"* ]]; then
-    # 在Docker环境中使用相对路径
-    KEYSTORE_PATH="keystores/$KEYSTORE_RELATIVE_PATH"
+# 只有在成功获取配置时才解析
+if [ -n "$DOMAIN_CONFIG" ] && [ "$DOMAIN_CONFIG" != "" ]; then
+    # 解析域名配置
+    DOMAIN=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['domain'])" 2>/dev/null)
+    PACKAGE_NAME=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['package_name'])" 2>/dev/null)
+    KEYSTORE_PATH=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['keystore_path'])" 2>/dev/null)
+    KEYSTORE_PASSWORD=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['keystore_password'])" 2>/dev/null)
+    KEY_ALIAS=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_alias'])" 2>/dev/null)
+    KEY_PASSWORD=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_password'])" 2>/dev/null)
+    
+    # 在Docker环境中，需要转换路径格式
+    KEYSTORE_RELATIVE_PATH=$(basename "$KEYSTORE_PATH")
+    if [[ "$KEYSTORE_PATH" == *"/deploy/keystores/"* ]]; then
+        # 在Docker环境中使用相对路径
+        KEYSTORE_PATH="keystores/$KEYSTORE_RELATIVE_PATH"
+    fi
 fi
 
 echo ""
