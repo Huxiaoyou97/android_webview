@@ -75,6 +75,18 @@ class DomainManager:
         
         return package_name
     
+    def _normalize_keystore_path(self, keystore_path):
+        """标准化签名文件路径，支持Docker环境"""
+        # 检测是否在Docker环境中（通过工作目录判断）
+        current_dir = os.getcwd()
+        if '/app' in current_dir or os.path.exists('/app/workspace'):
+            # Docker环境：返回相对路径
+            keystore_name = os.path.basename(keystore_path)
+            return f"keystores/{keystore_name}"
+        else:
+            # 宿主机环境：返回绝对路径
+            return keystore_path
+    
     def _generate_keystore(self, domain):
         """为域名生成签名文件"""
         keystore_name = f"{domain.replace('.', '_')}.jks"
@@ -135,7 +147,7 @@ class DomainManager:
             config = {
                 'domain': domain,
                 'package_name': package_name,
-                'keystore_path': keystore_path,
+                'keystore_path': self._normalize_keystore_path(keystore_path),
                 'keystore_password': password,
                 'key_alias': alias,
                 'key_password': password,

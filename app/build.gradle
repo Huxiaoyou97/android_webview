@@ -41,7 +41,14 @@ android {
         release {
             keyAlias dynamicConfig.getProperty('keystore.alias', keystoreProperties['keyAlias'])
             keyPassword dynamicConfig.getProperty('keystore.keyPassword', keystoreProperties['keyPassword'])
-            storeFile file(dynamicConfig.getProperty('keystore.storeFile', keystoreProperties['storeFile']))
+            
+            def storeFileProperty = dynamicConfig.getProperty('keystore.storeFile', keystoreProperties['storeFile'])
+            if (storeFileProperty != null && !storeFileProperty.isEmpty()) {
+                storeFile file(storeFileProperty)
+            } else {
+                storeFile file(keystoreProperties['storeFile'])
+            }
+            
             storePassword dynamicConfig.getProperty('keystore.storePassword', keystoreProperties['storePassword'])
             v1SigningEnabled true
             v2SigningEnabled true

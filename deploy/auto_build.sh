@@ -57,6 +57,14 @@ KEYSTORE_PASSWORD=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config
 KEY_ALIAS=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_alias'])")
 KEY_PASSWORD=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_password'])")
 
+# 在Docker环境中，需要转换路径格式
+# 将 /Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/ 转换为相对路径
+KEYSTORE_RELATIVE_PATH=$(basename "$KEYSTORE_PATH")
+if [[ "$KEYSTORE_PATH" == *"/deploy/keystores/"* ]]; then
+    # 在Docker环境中使用相对路径
+    KEYSTORE_PATH="keystores/$KEYSTORE_RELATIVE_PATH"
+fi
+
 echo ""
 echo "域名配置信息："
 echo "  域名: $DOMAIN"
@@ -68,6 +76,13 @@ echo "  密钥别名: $KEY_ALIAS"
 echo ""
 echo "📝 创建动态配置文件..."
 DYNAMIC_CONFIG="$PROJECT_DIR/dynamic.properties"
+
+# 确保签名文件路径不为空
+if [ -z "$KEYSTORE_PATH" ] || [ "$KEYSTORE_PATH" = "null" ]; then
+    echo "❌ 错误：签名文件路径为空"
+    exit 1
+fi
+
 cat > "$DYNAMIC_CONFIG" << EOF
 # 动态配置文件 - 由 auto_build.sh 自动生成
 app.domainName=$DOMAIN
@@ -80,6 +95,7 @@ keystore.keyPassword=$KEY_PASSWORD
 EOF
 
 echo "✅ 动态配置文件已创建: $DYNAMIC_CONFIG"
+echo "签名文件路径: $KEYSTORE_PATH"
 
 # 检查图标文件是否存在
 ICON_PATH="$SCRIPT_DIR/$ICON_FILE"

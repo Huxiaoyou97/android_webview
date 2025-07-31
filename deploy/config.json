@@ -1,5 +1,5 @@
 {
-  "app_name": "测试应用A",
-  "app_url": "https://example.com?test=1",
+  "app_name": "测试应用",
+  "app_url": "https://test.example.com",
   "icon_file": "icon.png"
 }

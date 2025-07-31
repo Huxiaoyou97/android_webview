@@ -1,1 +1,20 @@
-{}
+{
+  "example.com": {
+    "domain": "example.com",
+    "package_name": "com.com.example",
+    "keystore_path": "/Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/example_com.jks",
+    "keystore_password": "a379a6f6eeafb9a5",
+    "key_alias": "examplecom",
+    "key_password": "a379a6f6eeafb9a5",
+    "created_at": "2025-07-31T17:37:16.060230"
+  },
+  "test.example.com": {
+    "domain": "test.example.com",
+    "package_name": "com.com.example.test",
+    "keystore_path": "/Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/test_example_com.jks",
+    "keystore_password": "ad92750df0393f8f",
+    "key_alias": "testexamplecom",
+    "key_password": "ad92750df0393f8f",
+    "created_at": "2025-07-31T17:39:25.177504"
+  }
+}
