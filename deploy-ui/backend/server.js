@@ -7,6 +7,7 @@ import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { spawn } from 'child_process'
 import sharp from 'sharp'
+import { glob } from 'glob'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -148,7 +149,7 @@ const cleanupUploadsDirectory = () => {
 setInterval(() => {
   cleanupExpiredFiles()
   cleanupUploadsDirectory()
-}, 60 * 1000) // 每分钟检查一次
+}, 10 * 60 * 1000) // 每10分钟检查一次
 
 console.log('🧹 文件清理服务已启动，每分钟检查一次过期文件')
 
@@ -237,27 +238,36 @@ const buildAPK = async (appName, appUrl, iconPath) => {
         }
       })
       
-      buildProcess.on('close', (code) => {
+      buildProcess.on('close', async (code) => {
         if (code === 0) {
           addLog('APK构建成功完成！')
           
-          // 查找生成的APK文件
-          const apkFile = path.join(deployDir, 'app-release.apk')
-          if (fs.existsSync(apkFile)) {
-            // 使用应用名称作为APK文件名
-            const safeAppName = appName.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_')
-            const apkFileName = `${safeAppName}_${buildId.substring(0,8)}.apk`
-            const publicApkPath = path.join(publicDir, apkFileName)
-            fs.copyFileSync(apkFile, publicApkPath)
+          try {
+            // 查找生成的APK文件（域名特定的文件名）
+            const apkPattern = path.join(deployDir, '*-app.apk')
+            const apkFiles = await glob(apkPattern)
             
-            // 将生成的APK添加到清理队列
-            addToCleanupQueue(publicApkPath)
-            
-            buildStatus.success = true
-            buildStatus.downloadUrl = `/api/download/${apkFileName}`
-            addLog('APK文件已准备好下载')
-          } else {
-            addLog('未找到生成的APK文件', 'error')
+            if (apkFiles.length > 0) {
+              const latestApk = apkFiles[0] // 取第一个匹配的文件
+              const apkFileName = path.basename(latestApk)
+              const buildIdPrefix = buildId.substring(0,8)
+              const finalApkName = `${buildIdPrefix}-${apkFileName}`
+              const publicApkPath = path.join(publicDir, finalApkName)
+              
+              fs.copyFileSync(latestApk, publicApkPath)
+              
+              // 将生成的APK添加到清理队列
+              addToCleanupQueue(publicApkPath)
+              
+              buildStatus.success = true
+              buildStatus.downloadUrl = `/api/download/${finalApkName}`
+              addLog(`APK文件已准备好下载: ${finalApkName}`)
+            } else {
+              addLog('未找到生成的APK文件', 'error')
+              buildStatus.success = false
+            }
+          } catch (error) {
+            addLog(`查找APK文件时出错: ${error.message}`, 'error')
             buildStatus.success = false
           }
         } else {
