@@ -75,11 +75,30 @@ class DomainManager:
         parts = clean_domain.split('.')
         reversed_parts = parts[::-1]
         
-        # 确保第一部分以字母开头
-        if reversed_parts and not reversed_parts[0][0].isalpha():
-            reversed_parts[0] = 'domain' + reversed_parts[0]
+        # 处理每个部分，确保符合Java包名规范
+        processed_parts = []
+        for part in reversed_parts:
+            if not part:
+                continue
+            
+            # 如果部分以数字开头，添加前缀
+            if part[0].isdigit():
+                part = 'domain' + part
+            
+            # 确保只包含字母和数字
+            part = ''.join(c for c in part if c.isalnum())
+            
+            # 如果处理后为空，跳过
+            if part:
+                processed_parts.append(part.lower())
         
-        package_name = 'com.' + '.'.join(reversed_parts)
+        # 构建包名
+        if not processed_parts:
+            # 如果没有有效部分，使用域名的hash
+            domain_hash = hashlib.md5(domain.encode()).hexdigest()[:8]
+            package_name = f'com.generated.domain{domain_hash}'
+        else:
+            package_name = 'com.' + '.'.join(processed_parts)
         
         # 如果包名太长，进行截断并添加哈希
         if len(package_name) > 50:
