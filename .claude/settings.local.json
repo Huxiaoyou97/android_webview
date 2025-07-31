@@ -2,19 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(chmod:*)",
-      "Bash(rm:*)",
       "Bash(mkdir:*)",
-      "Bash(docker-compose down:*)",
-      "Bash(docker-compose build:*)",
-      "Bash(docker-compose:*)",
-      "Bash(yarn install)",
-      "Bash(/Users/huxiaoyou/Desktop/xiaoyou/android-webapp/deploy-ui/start.sh)",
-      "Bash(docker exec:*)",
-      "Bash(curl:*)",
-      "Bash(docker stats:*)",
-      "Bash(./auto_build.sh:*)",
-      "Bash(git checkout:*)",
-      "Bash(./fix-frontend.sh:*)"
+      "Bash(python3:*)",
+      "Bash(./manage_domains.sh:*)"
     ],
     "deny": []
   }

@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+域名管理系统 - 管理每个域名的包名和签名
+"""
+
+import os
+import hashlib
+import json
+import subprocess
+from urllib.parse import urlparse
+from datetime import datetime
+
+class DomainManager:
+    def __init__(self, base_dir=None):
+        if base_dir is None:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        self.base_dir = base_dir
+        self.keystores_dir = os.path.join(base_dir, 'keystores')
+        self.config_file = os.path.join(base_dir, 'domain_configs.json')
+        
+        # 确保目录存在
+        os.makedirs(self.keystores_dir, exist_ok=True)
+        
+        # 加载或创建配置
+        self.configs = self._load_configs()
+    
+    def _load_configs(self):
+        """加载域名配置"""
+        if os.path.exists(self.config_file):
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {}
+    
+    def _save_configs(self):
+        """保存域名配置"""
+        with open(self.config_file, 'w', encoding='utf-8') as f:
+            json.dump(self.configs, f, indent=2, ensure_ascii=False)
+    
+    def _url_to_domain(self, url):
+        """从URL提取域名"""
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        if not domain:
+            # 如果没有协议，尝试添加http://再解析
+            parsed = urlparse(f"http://{url}")
+            domain = parsed.netloc
+        
+        # 移除www前缀
+        if domain.startswith('www.'):
+            domain = domain[4:]
+        
+        return domain.lower()
+    
+    def _domain_to_package_name(self, domain):
+        """将域名转换为包名"""
+        # 移除特殊字符，只保留字母、数字和点
+        clean_domain = ''.join(c for c in domain if c.isalnum() or c == '.')
+        
+        # 反转域名部分作为包名
+        parts = clean_domain.split('.')
+        reversed_parts = parts[::-1]
+        
+        # 确保第一部分以字母开头
+        if reversed_parts and not reversed_parts[0][0].isalpha():
+            reversed_parts[0] = 'domain' + reversed_parts[0]
+        
+        package_name = 'com.' + '.'.join(reversed_parts)
+        
+        # 如果包名太长，进行截断并添加哈希
+        if len(package_name) > 50:
+            hash_suffix = hashlib.md5(domain.encode()).hexdigest()[:8]
+            package_name = package_name[:42] + hash_suffix
+        
+        return package_name
+    
+    def _generate_keystore(self, domain):
+        """为域名生成签名文件"""
+        keystore_name = f"{domain.replace('.', '_')}.jks"
+        keystore_path = os.path.join(self.keystores_dir, keystore_name)
+        
+        if os.path.exists(keystore_path):
+            print(f"签名文件已存在: {keystore_path}")
+            return keystore_path
+        
+        # 生成密钥参数
+        alias = domain.replace('.', '').replace('-', '')[:20]  # 限制别名长度
+        password = hashlib.sha256(domain.encode()).hexdigest()[:16]  # 生成16位密码
+        
+        # 生成keystore
+        cmd = [
+            'keytool', '-genkey', '-v',
+            '-keystore', keystore_path,
+            '-alias', alias,
+            '-keyalg', 'RSA',
+            '-keysize', '2048',
+            '-validity', '10000',
+            '-storepass', password,
+            '-keypass', password,
+            '-dname', f'CN={domain}, OU=WebApp, O=AutoBuild, L=City, S=State, C=CN'
+        ]
+        
+        try:
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+            print(f"✅ 为域名 {domain} 生成签名文件: {keystore_path}")
+            return keystore_path
+        except subprocess.CalledProcessError as e:
+            print(f"❌ 生成签名文件失败: {e}")
+            print(f"错误输出: {e.stderr}")
+            return None
+    
+    def get_domain_config(self, app_url):
+        """获取域名的完整配置"""
+        domain = self._url_to_domain(app_url)
+        
+        if domain in self.configs:
+            print(f"使用已存在的域名配置: {domain}")
+            config = self.configs[domain]
+        else:
+            print(f"为新域名创建配置: {domain}")
+            
+            # 生成包名
+            package_name = self._domain_to_package_name(domain)
+            
+            # 生成签名文件
+            keystore_path = self._generate_keystore(domain)
+            if not keystore_path:
+                raise Exception(f"无法为域名 {domain} 生成签名文件")
+            
+            # 生成密码
+            password = hashlib.sha256(domain.encode()).hexdigest()[:16]
+            alias = domain.replace('.', '').replace('-', '')[:20]
+            
+            config = {
+                'domain': domain,
+                'package_name': package_name,
+                'keystore_path': keystore_path,
+                'keystore_password': password,
+                'key_alias': alias,
+                'key_password': password,
+                'created_at': datetime.now().isoformat()
+            }
+            
+            self.configs[domain] = config
+            self._save_configs()
+        
+        return config
+    
+    def list_domains(self):
+        """列出所有域名配置"""
+        return list(self.configs.keys())
+    
+    def remove_domain(self, domain):
+        """移除域名配置（但保留签名文件）"""
+        if domain in self.configs:
+            del self.configs[domain]
+            self._save_configs()
+            print(f"已移除域名配置: {domain}")
+            return True
+        return False
+
+def main():
+    """命令行工具"""
+    import sys
+    
+    if len(sys.argv) < 2:
+        print("用法:")
+        print("  python3 domain_manager.py get <app_url>     # 获取域名配置")
+        print("  python3 domain_manager.py list              # 列出所有域名")
+        print("  python3 domain_manager.py remove <domain>   # 移除域名配置")
+        sys.exit(1)
+    
+    manager = DomainManager()
+    command = sys.argv[1]
+    
+    if command == 'get':
+        if len(sys.argv) < 3:
+            print("错误: 需要提供app_url")
+            sys.exit(1)
+        
+        app_url = sys.argv[2]
+        try:
+            config = manager.get_domain_config(app_url)
+            print(json.dumps(config, indent=2, ensure_ascii=False))
+        except Exception as e:
+            print(f"错误: {e}")
+            sys.exit(1)
+    
+    elif command == 'list':
+        domains = manager.list_domains()
+        if domains:
+            print("已配置的域名:")
+            for domain in domains:
+                config = manager.configs[domain]
+                print(f"  {domain} -> {config['package_name']}")
+        else:
+            print("暂无配置的域名")
+    
+    elif command == 'remove':
+        if len(sys.argv) < 3:
+            print("错误: 需要提供域名")
+            sys.exit(1)
+        
+        domain = sys.argv[2]
+        if manager.remove_domain(domain):
+            print(f"已移除域名: {domain}")
+        else:
+            print(f"域名不存在: {domain}")
+    
+    else:
+        print(f"未知命令: {command}")
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

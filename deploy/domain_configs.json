@@ -1,0 +1,38 @@
+{
+  "example.com": {
+    "domain": "example.com",
+    "package_name": "com.com.example",
+    "keystore_path": "/Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/example_com.jks",
+    "keystore_password": "a379a6f6eeafb9a5",
+    "key_alias": "examplecom",
+    "key_password": "a379a6f6eeafb9a5",
+    "created_at": "2025-07-31T13:41:37.799933"
+  },
+  "google.com": {
+    "domain": "google.com",
+    "package_name": "com.com.google",
+    "keystore_path": "/Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/google_com.jks",
+    "keystore_password": "d4c9d9027326271a",
+    "key_alias": "googlecom",
+    "key_password": "d4c9d9027326271a",
+    "created_at": "2025-07-31T13:41:49.618414"
+  },
+  "test.com": {
+    "domain": "test.com",
+    "package_name": "com.com.test",
+    "keystore_path": "/Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/test_com.jks",
+    "keystore_password": "99ab715d84a3bc5e",
+    "key_alias": "testcom",
+    "key_password": "99ab715d84a3bc5e",
+    "created_at": "2025-07-31T13:44:06.667656"
+  },
+  "github.com": {
+    "domain": "github.com",
+    "package_name": "com.com.github",
+    "keystore_path": "/Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/github_com.jks",
+    "keystore_password": "3aeb002460381c6f",
+    "key_alias": "githubcom",
+    "key_password": "3aeb002460381c6f",
+    "created_at": "2025-07-31T13:44:15.613974"
+  }
+}
