@@ -10,6 +10,9 @@ services:
       - ./uploads:/app/uploads
       - ./apks:/app/apks
       - ../deploy/auto_build.sh:/app/auto_build.sh
+      - ../deploy/domain_manager.py:/app/domain_manager.py
+      - ../deploy/keystores:/app/keystores
+      - ../deploy/domain_configs.json:/app/domain_configs.json
       - ../:/app/workspace
     environment:
       - NODE_ENV=production
