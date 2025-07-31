@@ -239,6 +239,14 @@ with open('$MAINACTIVITY_FILE', 'r') as f:
 # 替换包名声明
 content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
 
+# 添加或更新R类的import语句
+if 'import ' in content and '$PACKAGE_NAME.R;' not in content:
+    # 删除旧的R import（如果存在）
+    content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
+    
+    # 在package声明后添加新的R import
+    content = re.sub(r'(package\s+[^;]+;\s*\n)', r'\1\nimport $PACKAGE_NAME.R;\n', content, flags=re.MULTILINE)
+
 # 替换导入语句中的包名
 content = re.sub(r'import\s+com\.jsmiao\.webapp\.', 'import $PACKAGE_NAME.', content, flags=re.MULTILINE)
 
