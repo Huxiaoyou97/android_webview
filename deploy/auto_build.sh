@@ -43,37 +43,47 @@ echo "  图标文件: $ICON_FILE"
 # 获取域名配置
 echo ""
 echo "🔧 获取域名配置..."
-DOMAIN_CONFIG=$(python3 "$DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
-if [ $? -ne 0 ] || [ -z "$DOMAIN_CONFIG" ]; then
-    echo "❌ 获取域名配置失败，尝试重新初始化..."
-    
-    # 确保domain_configs.json文件存在且格式正确
-    if [ ! -f "$SCRIPT_DIR/domain_configs.json" ] || [ ! -s "$SCRIPT_DIR/domain_configs.json" ]; then
-        echo "{}" > "$SCRIPT_DIR/domain_configs.json"
-        echo "✅ 已初始化domain_configs.json文件"
-    fi
-    
-    # 重新尝试获取配置
-    DOMAIN_CONFIG=$(python3 "$DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
-    if [ $? -ne 0 ] || [ -z "$DOMAIN_CONFIG" ]; then
-        echo "❌ 仍然无法获取域名配置，使用默认配置"
-        
-        # 使用默认配置
-        DOMAIN="default"
-        PACKAGE_NAME="com.jsmiao.webapp"
-        KEYSTORE_PATH="../bluetooth.jks"
-        KEYSTORE_PASSWORD="Appsdotapps"
-        KEY_ALIAS="bluetooth"
-        KEY_PASSWORD="Appsdotapps"
+
+# 尝试使用简化版域名管理器
+SIMPLE_DOMAIN_MANAGER="$SCRIPT_DIR/simple_domain_manager.py"
+if [ -f "$SIMPLE_DOMAIN_MANAGER" ]; then
+    DOMAIN_CONFIG=$(python3 "$SIMPLE_DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$DOMAIN_CONFIG" ]; then
+        echo "✅ 使用简化版域名管理器获取配置成功"
     else
-        echo "✅ 重新获取域名配置成功"
+        echo "❌ 简化版域名管理器也失败，使用默认配置"
+        DOMAIN_CONFIG=""
     fi
 else
-    echo "✅ 获取域名配置成功"
+    # 回退到原始域名管理器
+    DOMAIN_CONFIG=$(python3 "$DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
+    if [ $? -ne 0 ] || [ -z "$DOMAIN_CONFIG" ]; then
+        echo "❌ 获取域名配置失败，尝试重新初始化..."
+        
+        # 确保domain_configs.json文件存在且格式正确
+        if [ ! -f "$SCRIPT_DIR/domain_configs.json" ] || [ ! -s "$SCRIPT_DIR/domain_configs.json" ]; then
+            echo "{}" > "$SCRIPT_DIR/domain_configs.json"
+            echo "✅ 已初始化domain_configs.json文件"
+        fi
+        
+        # 重新尝试获取配置
+        DOMAIN_CONFIG=$(python3 "$DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
+        if [ $? -ne 0 ] || [ -z "$DOMAIN_CONFIG" ]; then
+            echo "❌ 仍然无法获取域名配置，使用默认配置"
+            DOMAIN_CONFIG=""
+        else
+            echo "✅ 重新获取域名配置成功"
+        fi
+    else
+        echo "✅ 获取域名配置成功"
+    fi
 fi
 
 # 只有在成功获取配置时才解析
 if [ -n "$DOMAIN_CONFIG" ] && [ "$DOMAIN_CONFIG" != "" ]; then
+    echo "🔍 解析域名配置..."
+    echo "配置内容: $DOMAIN_CONFIG"
+    
     # 解析域名配置
     DOMAIN=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['domain'])" 2>/dev/null)
     PACKAGE_NAME=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['package_name'])" 2>/dev/null)
@@ -82,12 +92,29 @@ if [ -n "$DOMAIN_CONFIG" ] && [ "$DOMAIN_CONFIG" != "" ]; then
     KEY_ALIAS=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_alias'])" 2>/dev/null)
     KEY_PASSWORD=$(echo "$DOMAIN_CONFIG" | python3 -c "import json, sys; config=json.load(sys.stdin); print(config['key_password'])" 2>/dev/null)
     
+    echo "解析结果："
+    echo "  域名: '$DOMAIN'"
+    echo "  包名: '$PACKAGE_NAME'"  
+    echo "  签名文件: '$KEYSTORE_PATH'"
+    
     # 在Docker环境中，需要转换路径格式
-    KEYSTORE_RELATIVE_PATH=$(basename "$KEYSTORE_PATH")
-    if [[ "$KEYSTORE_PATH" == *"/deploy/keystores/"* ]]; then
-        # 在Docker环境中使用相对路径
-        KEYSTORE_PATH="keystores/$KEYSTORE_RELATIVE_PATH"
+    if [ -n "$KEYSTORE_PATH" ]; then
+        KEYSTORE_RELATIVE_PATH=$(basename "$KEYSTORE_PATH")
+        if [[ "$KEYSTORE_PATH" == *"/deploy/keystores/"* ]]; then
+            # 在Docker环境中使用相对路径
+            KEYSTORE_PATH="keystores/$KEYSTORE_RELATIVE_PATH"
+            echo "  转换后路径: '$KEYSTORE_PATH'"
+        fi
     fi
+else
+    echo "❌ 域名配置为空，使用默认配置"
+    # 使用默认配置
+    DOMAIN="default"
+    PACKAGE_NAME="com.jsmiao.webapp"
+    KEYSTORE_PATH="../bluetooth.jks"
+    KEYSTORE_PASSWORD="Appsdotapps"
+    KEY_ALIAS="bluetooth"
+    KEY_PASSWORD="Appsdotapps"
 fi
 
 echo ""
