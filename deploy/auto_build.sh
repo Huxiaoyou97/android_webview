@@ -316,39 +316,7 @@ if [ -d "$JAVA_DIR" ]; then
     find "$JAVA_DIR" -type d -empty -delete 2>/dev/null || true
 fi
 
-# 🔧 恢复activity_main.xml到原始状态
-echo "🔧 恢复activity_main.xml到原始状态..."
-ACTIVITY_MAIN_FILE="$PROJECT_DIR/app/src/main/res/layout/activity_main.xml"
-if [ -f "$ACTIVITY_MAIN_FILE" ]; then
-    # 检查是否包含非原始包名的MWebView引用
-    if ! grep -q "com\.jsmiao\.webapp\.controls\.MWebView" "$ACTIVITY_MAIN_FILE"; then
-        echo "  检测到activity_main.xml包含非原始包名引用，正在恢复..."
-        # 直接重写为正确的原始内容，确保XML格式完全正确
-        cat > "$ACTIVITY_MAIN_FILE" << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
-
-    <com.jsmiao.webapp.controls.MWebView
-        android:id="@+id/mWebView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-    </com.jsmiao.webapp.controls.MWebView>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
-EOF
-        echo "  ✅ activity_main.xml已恢复到原始状态"
-    else
-        echo "  ✅ activity_main.xml已是原始状态"
-    fi
-else
-    echo "  ❌ activity_main.xml文件不存在"
-fi
+echo "  ✅ 保持代码结构稳定，只清理临时文件"
 
 # 配置文件路径
 if [ -d "/app/workspace" ] && [ "$SCRIPT_DIR" = "/app" ]; then
@@ -555,76 +523,15 @@ if [ -f "$ANDROIDMANIFEST_FILE" ]; then
     cp "$ANDROIDMANIFEST_FILE" "$BACKUP_DIR/AndroidManifest.xml.backup"
 fi
 
-# 如果包名发生变化，需要删除旧目录的文件
-NEW_PACKAGE_DIR="$PROJECT_DIR/app/src/main/java/$(echo $PACKAGE_NAME | tr '.' '/')"
-
+# 如果包名发生变化，只更新动态配置，不改变代码结构
 if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
-    echo "  包名已变更，重新组织目录结构..."
-    echo "  新包名目录: $NEW_PACKAGE_DIR"
-    
-    # 检查源文件是否存在
-    echo "  检查源文件: $MAINACTIVITY_DIR/MainActivity.java"
-    if [ ! -f "$MAINACTIVITY_DIR/MainActivity.java" ]; then
-        echo "错误：源文件 MainActivity.java 不存在: $MAINACTIVITY_DIR/MainActivity.java"
-        echo "尝试列出目录内容:"
-        ls -la "$MAINACTIVITY_DIR/" 2>/dev/null || echo "目录不存在"
-        ls -la "$PROJECT_DIR/app/src/main/java/" 2>/dev/null || echo "java目录不存在"
-        find "$PROJECT_DIR/app/src/main/java/" -name "*.java" -type f 2>/dev/null || echo "未找到java文件"
-        exit 1
-    fi
-    
-    # 创建新的包名目录
-    mkdir -p "$NEW_PACKAGE_DIR/controls"
-    
-    # 安全地复制文件（而不是移动），保持原始文件不变
-    echo "  复制文件到新包名目录..."
-    
-    if [ -f "$MAINACTIVITY_DIR/MainActivity.java" ]; then
-        cp "$MAINACTIVITY_DIR/MainActivity.java" "$NEW_PACKAGE_DIR/MainActivity.java" || {
-            echo "错误：无法复制 MainActivity.java"
-            exit 1
-        }
-        echo "    ✅ MainActivity.java 已复制"
-    fi
-    
-    if [ -f "$MAINACTIVITY_DIR/MyApplication.java" ]; then
-        cp "$MAINACTIVITY_DIR/MyApplication.java" "$NEW_PACKAGE_DIR/MyApplication.java" || {
-            echo "错误：无法复制 MyApplication.java"
-            exit 1
-        }
-        echo "    ✅ MyApplication.java 已复制"
-    fi
-    
-    if [ -f "$MAINACTIVITY_DIR/controls/MWebView.java" ]; then
-        cp "$MAINACTIVITY_DIR/controls/MWebView.java" "$NEW_PACKAGE_DIR/controls/MWebView.java" || {
-            echo "错误：无法复制 MWebView.java"
-            exit 1
-        }
-        echo "    ✅ MWebView.java 已复制"
-    fi
-    
-    echo "  ✅ 文件已复制到新包名目录"
-    
-    # 更新所有Java文件的路径（指向新目录）
-    MAINACTIVITY_FILE="$NEW_PACKAGE_DIR/MainActivity.java"
-    MYAPPLICATION_FILE="$NEW_PACKAGE_DIR/MyApplication.java"
-    MWEBVIEW_FILE="$NEW_PACKAGE_DIR/controls/MWebView.java"
+    echo "  注意：使用不同的applicationId: $PACKAGE_NAME，但保持代码结构不变"
+    echo "  这样可以避免类引用问题，同时实现多域名APK并存"
 else
-    MYAPPLICATION_FILE="$MAINACTIVITY_DIR/MyApplication.java"
-    MWEBVIEW_FILE="$MAINACTIVITY_DIR/controls/MWebView.java"
+    echo "  使用默认的applicationId: com.jsmiao.webapp"
 fi
 
-if [ ! -f "$MAINACTIVITY_FILE" ]; then
-    echo "错误：MainActivity.java 文件不存在: $MAINACTIVITY_FILE"
-    exit 1
-fi
-
-if [ ! -f "$ANDROIDMANIFEST_FILE" ]; then
-    echo "错误：AndroidManifest.xml 文件不存在: $ANDROIDMANIFEST_FILE"
-    exit 1
-fi
-
-# 使用Python替换MainActivity.java中的URL和包名
+# 只修改MainActivity.java中的URL，不改变包名和import
 python3 -c "
 import re
 import sys
@@ -633,20 +540,7 @@ import sys
 with open('$MAINACTIVITY_FILE', 'r') as f:
     content = f.read()
 
-# 替换包名声明（只有包名不同时才替换）
-if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
-    content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
-    # 添加正确的R类import - 由于namespace固定为com.jsmiao.webapp，R类始终在原始包下
-    # 先删除任何已存在的R类import
-    content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
-    # 在androidx.appcompat.app.AppCompatActivity后添加原始包名的R类import
-    content = re.sub(r'(import androidx\.appcompat\.app\.AppCompatActivity;\s*\n)', r'\1import com.jsmiao.webapp.R;\n', content)
-
-# 替换导入语句中的包名（只有包名不同时才替换）
-if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
-    content = re.sub(r'import\s+com\.jsmiao\.webapp\.controls', 'import $PACKAGE_NAME.controls', content, flags=re.MULTILINE)
-
-# 替换URL
+# 只替换URL，保持所有其他内容不变
 pattern = r'^(\s*String url = \")[^\"]*(\";).*$'
 replacement = r'\1$APP_URL\2'
 content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
@@ -656,59 +550,9 @@ with open('$MAINACTIVITY_FILE', 'w') as f:
     f.write(content)
 "
 
-# 更新其他Java文件的包名
-if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
-    echo "  更新其他Java文件的包名..."
-    
-    # 更新MyApplication.java
-    if [ -f "$MYAPPLICATION_FILE" ]; then
-        python3 -c "
-import re
-with open('$MYAPPLICATION_FILE', 'r') as f:
-    content = f.read()
-content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
-content = re.sub(r'import\s+com\.jsmiao\.webapp\.', 'import $PACKAGE_NAME.', content, flags=re.MULTILINE)
-with open('$MYAPPLICATION_FILE', 'w') as f:
-    f.write(content)
-"
-    fi
-    
-    # 更新MWebView.java
-    if [ -f "$MWEBVIEW_FILE" ]; then
-        python3 -c "
-import re
-with open('$MWEBVIEW_FILE', 'r') as f:
-    content = f.read()
-content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME.controls;', content, flags=re.MULTILINE)
-content = re.sub(r'import\s+com\.jsmiao\.webapp\.', 'import $PACKAGE_NAME.', content, flags=re.MULTILINE)
-with open('$MWEBVIEW_FILE', 'w') as f:
-    f.write(content)
-"
-    fi
-fi
-
-# 使用Python替换AndroidManifest.xml中的包名引用（如果包名变化）
-if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
-    echo "  更新AndroidManifest.xml中的包名引用..."
-    python3 -c "
-import re
-import sys
-
-# 读取文件
-with open('$ANDROIDMANIFEST_FILE', 'r') as f:
-    content = f.read()
-
-# 替换activity name引用，从相对路径改为绝对路径
-content = re.sub(r'android:name=\"\.MainActivity\"', 'android:name=\"$PACKAGE_NAME.MainActivity\"', content)
-content = re.sub(r'android:name=\"\.MyApplication\"', 'android:name=\"$PACKAGE_NAME.MyApplication\"', content) 
-
-# 写回文件
-with open('$ANDROIDMANIFEST_FILE', 'w') as f:
-    f.write(content)
-"
-fi
-
 echo "  URL 已更新为: $APP_URL"
+echo "  代码包结构保持为: com.jsmiao.webapp（稳定）"
+echo "  APK包标识符设为: $PACKAGE_NAME（区分）"
 
 # 3. 修改strings.xml中的App名称
 echo "正在修改 strings.xml 中的 App 名称..."
@@ -727,24 +571,7 @@ sed -i.tmp "s|<string name=\"app_name\">[^<]*</string>|<string name=\"app_name\"
 rm -f "$STRINGS_FILE.tmp"
 
 echo "  App 名称已更新为: $APP_NAME"
-
-# 3.5. 修改activity_main.xml中的MWebView包名引用
-echo "正在修改 activity_main.xml 中的包名引用..."
-ACTIVITY_MAIN_FILE="$PROJECT_DIR/app/src/main/res/layout/activity_main.xml"
-
-if [ -f "$ACTIVITY_MAIN_FILE" ]; then
-    # 创建备份
-    cp "$ACTIVITY_MAIN_FILE" "$BACKUP_DIR/activity_main.xml.backup"
-    
-    # 替换MWebView的包名引用
-    if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
-        sed -i.tmp "s|com.jsmiao.webapp.controls.MWebView|$PACKAGE_NAME.controls.MWebView|g" "$ACTIVITY_MAIN_FILE"
-        rm -f "$ACTIVITY_MAIN_FILE.tmp"
-        echo "  activity_main.xml 中的包名引用已更新"
-    fi
-else
-    echo "  警告：activity_main.xml 文件不存在"
-fi
+echo "  所有代码文件保持原始包结构，确保稳定性"
 
 # 4. 清理之前的构建文件
 echo "正在清理之前的构建文件..."
