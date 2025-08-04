@@ -52,13 +52,21 @@ def domain_to_package_name(domain):
         if part:
             processed_parts.append(part.lower())
     
-    # 构建包名
+    # 构建包名 - 特殊处理避免com.com前缀
     if not processed_parts:
         # 如果没有有效部分，使用域名的hash
         domain_hash = hashlib.md5(domain.encode()).hexdigest()[:8]
         package_name = f'com.generated.domain{domain_hash}'
     else:
-        package_name = 'com.' + '.'.join(processed_parts)
+        # 检查是否会产生com.com前缀
+        if len(processed_parts) >= 2 and processed_parts[0] == 'com' and processed_parts[1] == 'com':
+            # 避免com.com，使用com.webapp.xxx代替
+            package_name = 'com.webapp.' + '.'.join(processed_parts[1:])
+        elif len(processed_parts) >= 1 and processed_parts[0] == 'com':
+            # 如果只是com开头，但不是com.com，改为com.webapp.xxx避免与系统包冲突
+            package_name = 'com.webapp.' + '.'.join(processed_parts[1:])
+        else:
+            package_name = 'com.' + '.'.join(processed_parts)
     
     # 如果包名太长，进行截断并添加哈希
     if len(package_name) > 50:
