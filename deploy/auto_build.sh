@@ -612,19 +612,8 @@ with open('$MAINACTIVITY_FILE', 'r') as f:
 if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
     content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
 
-# 添加或更新R类的import语句
-# 删除旧的R import（如果存在）
+# 删除任何已存在的R类import（如果存在）
 content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
-
-# 在其他import语句之后添加新的R import
-import_section = re.search(r'(import\s+[^;]+;\s*\n)+', content, flags=re.MULTILINE)
-if import_section:
-    # 在最后一个import后添加R import
-    last_import_end = import_section.end()
-    content = content[:last_import_end] + f'import $PACKAGE_NAME.R;\n' + content[last_import_end:]
-else:
-    # 如果没有import语句，在package声明后添加
-    content = re.sub(r'(package\s+[^;]+;\s*\n)', r'\1\nimport $PACKAGE_NAME.R;\n', content, flags=re.MULTILINE)
 
 # 替换导入语句中的包名（只有包名不同时才替换）
 if '$PACKAGE_NAME' != 'com.jsmiao.webapp':

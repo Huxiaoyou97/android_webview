@@ -14,7 +14,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.jsmiao.webapp.R;
 import com.jsmiao.webapp.controls.MWebView;
 
 public class MainActivity extends AppCompatActivity {
