@@ -608,8 +608,9 @@ import sys
 with open('$MAINACTIVITY_FILE', 'r') as f:
     content = f.read()
 
-# 替换包名声明
-content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
+# 替换包名声明（只有包名不同时才替换）
+if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
+    content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
 
 # 添加或更新R类的import语句
 # 删除旧的R import（如果存在）
@@ -625,11 +626,12 @@ else:
     # 如果没有import语句，在package声明后添加
     content = re.sub(r'(package\s+[^;]+;\s*\n)', r'\1\nimport $PACKAGE_NAME.R;\n', content, flags=re.MULTILINE)
 
-# 替换导入语句中的包名
-content = re.sub(r'import\s+com\.jsmiao\.webapp\.', 'import $PACKAGE_NAME.', content, flags=re.MULTILINE)
+# 替换导入语句中的包名（只有包名不同时才替换）
+if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
+    content = re.sub(r'import\s+com\.jsmiao\.webapp\.', 'import $PACKAGE_NAME.', content, flags=re.MULTILINE)
 
-# 替换URL，只替换未注释的行
-pattern = r'^(\s*String url = \")[^\"]*(\"; // \d+)$'
+# 替换URL
+pattern = r'^(\s*String url = \")[^\"]*(\";).*$'
 replacement = r'\1$APP_URL\2'
 content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
 
