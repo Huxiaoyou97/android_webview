@@ -19,8 +19,13 @@ fi
 # !!!! 关键修复：确保原始Java文件存在 !!!!
 echo "🔧 检查并恢复原始Java文件..."
 ORIGINAL_JAVA_DIR="$PROJECT_DIR/app/src/main/java/com/jsmiao/webapp"
-if [ ! -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ]; then
-    echo "  原始Java文件不存在，正在从备份恢复..."
+# 修改条件：只要MainActivity.java不存在就恢复
+if [ ! -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ] || [ ! -f "$ORIGINAL_JAVA_DIR/MyApplication.java" ] || [ ! -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ]; then
+    echo "  检测到Java文件缺失，正在恢复..."
+    echo "  MainActivity.java: $([ -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ] && echo "存在" || echo "缺失")"
+    echo "  MyApplication.java: $([ -f "$ORIGINAL_JAVA_DIR/MyApplication.java" ] && echo "存在" || echo "缺失")"  
+    echo "  MWebView.java: $([ -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ] && echo "存在" || echo "缺失")"
+    
     mkdir -p "$ORIGINAL_JAVA_DIR/controls"
     
     # 确定备份文件路径
