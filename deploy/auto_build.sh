@@ -323,9 +323,25 @@ if [ -f "$ACTIVITY_MAIN_FILE" ]; then
     # 检查是否包含非原始包名的MWebView引用
     if ! grep -q "com\.jsmiao\.webapp\.controls\.MWebView" "$ACTIVITY_MAIN_FILE"; then
         echo "  检测到activity_main.xml包含非原始包名引用，正在恢复..."
-        # 恢复开始标签和结束标签的包名引用
-        sed -i.tmp 's|<[^[:space:]>]*\.controls\.MWebView|<com.jsmiao.webapp.controls.MWebView|g; s|</[^[:space:]>]*\.controls\.MWebView|</com.jsmiao.webapp.controls.MWebView|g' "$ACTIVITY_MAIN_FILE"
-        rm -f "$ACTIVITY_MAIN_FILE.tmp"
+        # 直接重写为正确的原始内容，确保XML格式完全正确
+        cat > "$ACTIVITY_MAIN_FILE" << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <com.jsmiao.webapp.controls.MWebView
+        android:id="@+id/mWebView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+    </com.jsmiao.webapp.controls.MWebView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+EOF
         echo "  ✅ activity_main.xml已恢复到原始状态"
     else
         echo "  ✅ activity_main.xml已是原始状态"
