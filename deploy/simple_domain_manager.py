@@ -84,7 +84,7 @@ def ensure_keystore_exists(domain, keystore_path, password, alias):
     
     # 如果文件不存在，创建新的
     if not os.path.exists(keystore_abs_path):
-        print(f"创建新的签名文件: {keystore_abs_path}")
+        print(f"创建新的签名文件: {keystore_abs_path}", file=sys.stderr)
         
         # 生成自签名证书
         dname = f"CN={domain}, OU=Mobile, O=Company, L=City, ST=State, C=US"
@@ -103,12 +103,12 @@ def ensure_keystore_exists(domain, keystore_path, password, alias):
         
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
-            print(f"✅ 签名文件创建成功")
+            print(f"✅ 签名文件创建成功", file=sys.stderr)
         except subprocess.CalledProcessError as e:
-            print(f"❌ 创建签名文件失败: {e.stderr}")
+            print(f"❌ 创建签名文件失败: {e.stderr}", file=sys.stderr)
             raise
     else:
-        print(f"签名文件已存在: {keystore_abs_path}")
+        print(f"签名文件已存在: {keystore_abs_path}", file=sys.stderr)
 
 def generate_domain_config(app_url):
     """生成域名配置"""
