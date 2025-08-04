@@ -19,13 +19,31 @@ fi
 # !!!! 关键修复：确保原始Java文件存在 !!!!
 echo "🔧 检查并恢复原始Java文件..."
 ORIGINAL_JAVA_DIR="$PROJECT_DIR/app/src/main/java/com/jsmiao/webapp"
-# 修改条件：只要MainActivity.java不存在就恢复
-if [ ! -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ] || [ ! -f "$ORIGINAL_JAVA_DIR/MyApplication.java" ] || [ ! -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ]; then
+
+# 详细检查每个文件
+echo "  检查文件状态:"
+echo "    目录: $ORIGINAL_JAVA_DIR"
+echo "    MainActivity.java: $([ -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ] && echo "存在" || echo "缺失")"
+echo "    MyApplication.java: $([ -f "$ORIGINAL_JAVA_DIR/MyApplication.java" ] && echo "存在" || echo "缺失")"  
+echo "    MWebView.java: $([ -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ] && echo "存在" || echo "缺失")"
+
+# 强制检查 - 只要任何一个文件缺失就恢复
+NEED_RESTORE=false
+if [ ! -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ]; then
+    echo "    MainActivity.java 缺失，需要恢复"
+    NEED_RESTORE=true
+fi
+if [ ! -f "$ORIGINAL_JAVA_DIR/MyApplication.java" ]; then
+    echo "    MyApplication.java 缺失，需要恢复"  
+    NEED_RESTORE=true
+fi
+if [ ! -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ]; then
+    echo "    MWebView.java 缺失，需要恢复"
+    NEED_RESTORE=true
+fi
+
+if [ "$NEED_RESTORE" = "true" ]; then
     echo "  检测到Java文件缺失，正在恢复..."
-    echo "  MainActivity.java: $([ -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ] && echo "存在" || echo "缺失")"
-    echo "  MyApplication.java: $([ -f "$ORIGINAL_JAVA_DIR/MyApplication.java" ] && echo "存在" || echo "缺失")"  
-    echo "  MWebView.java: $([ -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ] && echo "存在" || echo "缺失")"
-    
     mkdir -p "$ORIGINAL_JAVA_DIR/controls"
     
     # 确定备份文件路径
