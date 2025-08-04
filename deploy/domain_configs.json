@@ -1,11 +1,11 @@
 {
   "888i.bet": {
     "domain": "888i.bet",
-    "package_name": "com.bet.888i",
+    "package_name": "com.bet.domain888i",
     "keystore_path": "/Volumes/小右的移动固态/0702/新博/android_webview/deploy/keystores/888i_bet.jks",
     "keystore_password": "697b24de9e6a3fe3",
     "key_alias": "888ibet",
     "key_password": "697b24de9e6a3fe3",
-    "created_at": "2025-07-31T17:49:22.477939"
+    "created_at": "2025-08-04T10:46:01.102160"
   }
 }

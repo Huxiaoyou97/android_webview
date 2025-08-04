@@ -9,7 +9,8 @@
       "Bash(./test_domain_simple.sh:*)",
       "Bash(keytool:*)",
       "Bash(rm:*)",
-      "Bash(./test_r_fix.sh:*)"
+      "Bash(./test_r_fix.sh:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

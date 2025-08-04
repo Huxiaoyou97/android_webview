@@ -310,7 +310,10 @@ fi
 echo "🧹 清理之前构建的包名目录..."
 JAVA_DIR="$PROJECT_DIR/app/src/main/java"
 if [ -d "$JAVA_DIR" ]; then
-    find "$JAVA_DIR" -type d -path "*/com/*" ! -path "*/com/jsmiao/webapp*" -exec rm -rf {} + 2>/dev/null || true
+    # 只删除非原始包名的Java文件，保留原始文件
+    find "$JAVA_DIR" -type f -name "*.java" ! -path "*/com/jsmiao/webapp/*" -delete 2>/dev/null || true
+    # 删除空目录
+    find "$JAVA_DIR" -type d -empty -delete 2>/dev/null || true
 fi
 
 # 配置文件路径
