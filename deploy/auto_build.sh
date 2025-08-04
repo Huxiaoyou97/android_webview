@@ -16,6 +16,273 @@ else
     PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 fi
 
+# !!!! 关键修复：确保原始Java文件存在 !!!!
+echo "🔧 检查并恢复原始Java文件..."
+ORIGINAL_JAVA_DIR="$PROJECT_DIR/app/src/main/java/com/jsmiao/webapp"
+if [ ! -f "$ORIGINAL_JAVA_DIR/MainActivity.java" ]; then
+    echo "  原始Java文件不存在，正在从备份恢复..."
+    mkdir -p "$ORIGINAL_JAVA_DIR/controls"
+    
+    # 确定备份文件路径
+    if [ -d "/app/workspace" ] && [ "$SCRIPT_DIR" = "/app" ]; then
+        BACKUP_DIR="/app/workspace/deploy/backups"
+    else
+        BACKUP_DIR="$SCRIPT_DIR/backups"
+    fi
+    
+    # 从备份恢复MainActivity.java
+    if [ -f "$BACKUP_DIR/MainActivity.java.backup" ]; then
+        cp "$BACKUP_DIR/MainActivity.java.backup" "$ORIGINAL_JAVA_DIR/MainActivity.java"
+        echo "  ✅ MainActivity.java 已从备份恢复"
+    else
+        echo "  ❌ 备份文件不存在: $BACKUP_DIR/MainActivity.java.backup"
+        echo "  正在创建默认的MainActivity.java..."
+        cat > "$ORIGINAL_JAVA_DIR/MainActivity.java" << 'EOF'
+package com.jsmiao.webapp;
+
+import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.WindowManager;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.jsmiao.webapp.controls.MWebView;
+
+public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
+
+    private MWebView mWebView;
+    private static final int FILE_CHOOSER_RESULT_CODE = 1;
+    private ValueCallback<Uri[]> filePathCallback;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        setContentView(R.layout.activity_main);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        mWebView = (MWebView) findViewById(R.id.mWebView);
+        mWebView.setActivity(this);
+
+        setupWebView();
+
+        String url = "https://www.google.com/";
+        mWebView.loadUrl(url);
+        injectParamsToLocalStorage();
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void setupWebView() {
+        mWebView.getSettings().setJavaScriptEnabled(true);
+
+        mWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url.startsWith("http") || url.startsWith("https")) {
+                    return false;
+                } else {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Toast.makeText(MainActivity.this, "无法打开该链接，请检查是否安装了相应的应用", Toast.LENGTH_SHORT).show();
+                    }
+                    return true;
+                }
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                injectParamsToLocalStorage();
+            }
+        });
+
+        mWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                super.onProgressChanged(view, newProgress);
+            }
+
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
+                    FileChooserParams fileChooserParams) {
+                MainActivity.this.filePathCallback = filePathCallback;
+
+                Intent intent = fileChooserParams.createIntent();
+                try {
+                    startActivityForResult(intent, FILE_CHOOSER_RESULT_CODE);
+                } catch (ActivityNotFoundException e) {
+                    filePathCallback.onReceiveValue(null);
+                    return false;
+                }
+                return true;
+            }
+        });
+    }
+
+    private void injectParamsToLocalStorage() {
+        mWebView.evaluateJavascript("localStorage.setItem('web_app', '1');", null);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (mWebView.canGoBack()) {
+            mWebView.goBack();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == FILE_CHOOSER_RESULT_CODE) {
+            if (filePathCallback != null) {
+                Uri[] results = null;
+
+                if (resultCode == RESULT_OK && data != null) {
+                    String dataString = data.getDataString();
+                    if (dataString != null) {
+                        results = new Uri[] { Uri.parse(dataString) };
+                    }
+                }
+
+                filePathCallback.onReceiveValue(results);
+                filePathCallback = null;
+            }
+        }
+    }
+}
+EOF
+    fi
+    
+    # 创建MyApplication.java
+    if [ ! -f "$ORIGINAL_JAVA_DIR/MyApplication.java" ]; then
+        cat > "$ORIGINAL_JAVA_DIR/MyApplication.java" << 'EOF'
+package com.jsmiao.webapp;
+
+import android.app.Application;
+
+public class MyApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+    }
+}
+EOF
+        echo "  ✅ MyApplication.java 已创建"
+    fi
+    
+    # 创建MWebView.java
+    if [ ! -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ]; then
+        cat > "$ORIGINAL_JAVA_DIR/controls/MWebView.java" << 'EOF'
+package com.jsmiao.webapp.controls;
+
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.os.Build;
+import android.util.AttributeSet;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+public class MWebView extends WebView {
+    private Activity mActivity;
+
+    public MWebView(Context context) {
+        super(context);
+        init();
+    }
+
+    public MWebView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    public MWebView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init();
+    }
+
+    public void setActivity(Activity activity) {
+        this.mActivity = activity;
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void init() {
+        WebSettings webSettings = getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
+        webSettings.setDefaultTextEncodingName("utf-8");
+        webSettings.setAllowFileAccessFromFileURLs(false);
+        webSettings.setAllowUniversalAccessFromFileURLs(false);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
+        setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url.startsWith("http:") || url.startsWith("https:")) {
+                    return false;
+                }
+                return true;
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+            }
+        });
+
+        setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                super.onProgressChanged(view, newProgress);
+            }
+
+            @Override
+            public void onReceivedTitle(WebView view, String title) {
+                super.onReceivedTitle(view, title);
+            }
+        });
+    }
+}
+EOF
+        echo "  ✅ MWebView.java 已创建"
+    fi
+    
+    echo "  ✅ 所有原始Java文件已确保存在"
+else
+    echo "  ✅ 原始Java文件已存在，跳过恢复"
+fi
+
 # 清理之前构建的非原始包名目录
 echo "🧹 清理之前构建的包名目录..."
 JAVA_DIR="$PROJECT_DIR/app/src/main/java"
@@ -245,72 +512,49 @@ if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
     echo "  新包名目录: $NEW_PACKAGE_DIR"
     
     # 检查源文件是否存在
+    echo "  检查源文件: $MAINACTIVITY_DIR/MainActivity.java"
     if [ ! -f "$MAINACTIVITY_DIR/MainActivity.java" ]; then
         echo "错误：源文件 MainActivity.java 不存在: $MAINACTIVITY_DIR/MainActivity.java"
+        echo "尝试列出目录内容:"
+        ls -la "$MAINACTIVITY_DIR/" 2>/dev/null || echo "目录不存在"
+        ls -la "$PROJECT_DIR/app/src/main/java/" 2>/dev/null || echo "java目录不存在"
+        find "$PROJECT_DIR/app/src/main/java/" -name "*.java" -type f 2>/dev/null || echo "未找到java文件"
         exit 1
-    fi
-    
-    # 先保存原始文件
-    TEMP_DIR="/tmp/android_webview_temp_$$"
-    mkdir -p "$TEMP_DIR/controls"
-    
-    # 复制文件并检查是否成功
-    if [ -f "$MAINACTIVITY_DIR/MainActivity.java" ]; then
-        cp "$MAINACTIVITY_DIR/MainActivity.java" "$TEMP_DIR/" || {
-            echo "错误：无法复制 MainActivity.java"
-            exit 1
-        }
-    fi
-    
-    if [ -f "$MAINACTIVITY_DIR/MyApplication.java" ]; then
-        cp "$MAINACTIVITY_DIR/MyApplication.java" "$TEMP_DIR/" || {
-            echo "错误：无法复制 MyApplication.java"
-            exit 1
-        }
-    fi
-    
-    if [ -f "$MAINACTIVITY_DIR/controls/MWebView.java" ]; then
-        cp "$MAINACTIVITY_DIR/controls/MWebView.java" "$TEMP_DIR/controls/" || {
-            echo "错误：无法复制 MWebView.java"
-            exit 1
-        }
     fi
     
     # 创建新的包名目录
     mkdir -p "$NEW_PACKAGE_DIR/controls"
     
-    # 从临时目录复制文件到新目录
-    if [ -f "$TEMP_DIR/MainActivity.java" ]; then
-        cp "$TEMP_DIR/MainActivity.java" "$NEW_PACKAGE_DIR/" || {
-            echo "错误：无法移动 MainActivity.java 到新目录"
+    # 安全地复制文件（而不是移动），保持原始文件不变
+    echo "  复制文件到新包名目录..."
+    
+    if [ -f "$MAINACTIVITY_DIR/MainActivity.java" ]; then
+        cp "$MAINACTIVITY_DIR/MainActivity.java" "$NEW_PACKAGE_DIR/MainActivity.java" || {
+            echo "错误：无法复制 MainActivity.java"
             exit 1
         }
+        echo "    ✅ MainActivity.java 已复制"
     fi
     
-    if [ -f "$TEMP_DIR/MyApplication.java" ]; then
-        cp "$TEMP_DIR/MyApplication.java" "$NEW_PACKAGE_DIR/" || {
-            echo "错误：无法移动 MyApplication.java 到新目录"
+    if [ -f "$MAINACTIVITY_DIR/MyApplication.java" ]; then
+        cp "$MAINACTIVITY_DIR/MyApplication.java" "$NEW_PACKAGE_DIR/MyApplication.java" || {
+            echo "错误：无法复制 MyApplication.java"
             exit 1
         }
+        echo "    ✅ MyApplication.java 已复制"
     fi
     
-    if [ -f "$TEMP_DIR/controls/MWebView.java" ]; then
-        cp "$TEMP_DIR/controls/MWebView.java" "$NEW_PACKAGE_DIR/controls/" || {
-            echo "错误：无法移动 MWebView.java 到新目录"
+    if [ -f "$MAINACTIVITY_DIR/controls/MWebView.java" ]; then
+        cp "$MAINACTIVITY_DIR/controls/MWebView.java" "$NEW_PACKAGE_DIR/controls/MWebView.java" || {
+            echo "错误：无法复制 MWebView.java"
             exit 1
         }
+        echo "    ✅ MWebView.java 已复制"
     fi
     
-    # 删除旧目录，避免编译时使用错误的文件
-    echo "  删除旧目录..."
-    rm -rf "$MAINACTIVITY_DIR"
+    echo "  ✅ 文件已复制到新包名目录"
     
-    # 清理临时目录
-    rm -rf "$TEMP_DIR"
-    
-    echo "  ✅ 文件已移动到新包名目录，旧目录已删除"
-    
-    # 更新所有Java文件的路径
+    # 更新所有Java文件的路径（指向新目录）
     MAINACTIVITY_FILE="$NEW_PACKAGE_DIR/MainActivity.java"
     MYAPPLICATION_FILE="$NEW_PACKAGE_DIR/MyApplication.java"
     MWEBVIEW_FILE="$NEW_PACKAGE_DIR/controls/MWebView.java"
