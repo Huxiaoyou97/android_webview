@@ -611,13 +611,15 @@ with open('$MAINACTIVITY_FILE', 'r') as f:
 # 替换包名声明（只有包名不同时才替换）
 if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
     content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
-
-# 删除任何已存在的R类import（如果存在）
-content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
+    # 添加R类的正确import
+    # 先删除任何已存在的R类import
+    content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
+    # 在androidx.appcompat.app.AppCompatActivity后添加R类import
+    content = re.sub(r'(import androidx\.appcompat\.app\.AppCompatActivity;\s*\n)', r'\1import com.jsmiao.webapp.R;\n', content)
 
 # 替换导入语句中的包名（只有包名不同时才替换）
 if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
-    content = re.sub(r'import\s+com\.jsmiao\.webapp\.', 'import $PACKAGE_NAME.', content, flags=re.MULTILINE)
+    content = re.sub(r'import\s+com\.jsmiao\.webapp\.controls', 'import $PACKAGE_NAME.controls', content, flags=re.MULTILINE)
 
 # 替换URL
 pattern = r'^(\s*String url = \")[^\"]*(\";).*$'
