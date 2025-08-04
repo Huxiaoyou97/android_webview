@@ -366,6 +366,7 @@ echo "🔧 获取域名配置..."
 
 # 尝试使用简化版域名管理器
 if [ -f "$SIMPLE_DOMAIN_MANAGER" ]; then
+    # 只捕获stdout，忽略stderr
     DOMAIN_CONFIG=$(python3 "$SIMPLE_DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$DOMAIN_CONFIG" ]; then
         echo "✅ 使用简化版域名管理器获取配置成功"
