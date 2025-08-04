@@ -420,8 +420,8 @@ if [ -n "$DOMAIN_CONFIG" ] && [ "$DOMAIN_CONFIG" != "" ]; then
     if [ -n "$KEYSTORE_PATH" ]; then
         KEYSTORE_RELATIVE_PATH=$(basename "$KEYSTORE_PATH")
         if [[ "$KEYSTORE_PATH" == *"/deploy/keystores/"* ]]; then
-            # 在Docker环境中使用相对路径
-            KEYSTORE_PATH="keystores/$KEYSTORE_RELATIVE_PATH"
+            # 在Docker环境中使用相对于项目根目录的路径
+            KEYSTORE_PATH="../deploy/keystores/$KEYSTORE_RELATIVE_PATH"
             echo "  转换后路径: '$KEYSTORE_PATH'"
         fi
     fi
