@@ -5,7 +5,16 @@
 
 # 脚本目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 检测是否在Docker环境中
+if [ -d "/app/workspace" ] && [ "$SCRIPT_DIR" = "/app" ]; then
+    # Docker环境中的路径
+    PROJECT_DIR="/app/workspace"
+    SCRIPT_DIR="/app"
+else
+    # 本地环境中的路径
+    PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 
 # 清理之前构建的非原始包名目录
 echo "🧹 清理之前构建的包名目录..."
@@ -15,8 +24,19 @@ if [ -d "$JAVA_DIR" ]; then
 fi
 
 # 配置文件路径
-CONFIG_FILE="$SCRIPT_DIR/config.json"
-DOMAIN_MANAGER="$SCRIPT_DIR/domain_manager.py"
+if [ -d "/app/workspace" ] && [ "$SCRIPT_DIR" = "/app" ]; then
+    # Docker环境中的路径
+    CONFIG_FILE="/app/workspace/deploy/config.json"
+    DOMAIN_MANAGER="/app/domain_manager.py"
+    SIMPLE_DOMAIN_MANAGER="/app/simple_domain_manager.py"
+    DOMAIN_CONFIGS_FILE="/app/domain_configs.json"
+else
+    # 本地环境中的路径  
+    CONFIG_FILE="$SCRIPT_DIR/config.json"
+    DOMAIN_MANAGER="$SCRIPT_DIR/domain_manager.py"
+    SIMPLE_DOMAIN_MANAGER="$SCRIPT_DIR/simple_domain_manager.py"
+    DOMAIN_CONFIGS_FILE="$SCRIPT_DIR/domain_configs.json"
+fi
 
 # 检查配置文件是否存在
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -52,7 +72,6 @@ echo ""
 echo "🔧 获取域名配置..."
 
 # 尝试使用简化版域名管理器
-SIMPLE_DOMAIN_MANAGER="$SCRIPT_DIR/simple_domain_manager.py"
 if [ -f "$SIMPLE_DOMAIN_MANAGER" ]; then
     DOMAIN_CONFIG=$(python3 "$SIMPLE_DOMAIN_MANAGER" get "$APP_URL" 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$DOMAIN_CONFIG" ]; then
@@ -68,8 +87,8 @@ else
         echo "❌ 获取域名配置失败，尝试重新初始化..."
         
         # 确保domain_configs.json文件存在且格式正确
-        if [ ! -f "$SCRIPT_DIR/domain_configs.json" ] || [ ! -s "$SCRIPT_DIR/domain_configs.json" ]; then
-            echo "{}" > "$SCRIPT_DIR/domain_configs.json"
+        if [ ! -f "$DOMAIN_CONFIGS_FILE" ] || [ ! -s "$DOMAIN_CONFIGS_FILE" ]; then
+            echo "{}" > "$DOMAIN_CONFIGS_FILE"
             echo "✅ 已初始化domain_configs.json文件"
         fi
         
@@ -157,7 +176,12 @@ echo "✅ 动态配置文件已创建: $DYNAMIC_CONFIG"
 echo "签名文件路径: $KEYSTORE_PATH"
 
 # 检查图标文件是否存在
-ICON_PATH="$SCRIPT_DIR/$ICON_FILE"
+if [ -d "/app/workspace" ] && [ "$SCRIPT_DIR" = "/app" ]; then
+    ICON_PATH="/app/workspace/deploy/$ICON_FILE"
+else
+    ICON_PATH="$SCRIPT_DIR/$ICON_FILE"
+fi
+
 if [ ! -f "$ICON_PATH" ]; then
     echo "错误：图标文件 $ICON_PATH 不存在"
     exit 1
@@ -192,7 +216,11 @@ MAINACTIVITY_FILE="$MAINACTIVITY_DIR/MainActivity.java"
 ANDROIDMANIFEST_FILE="$PROJECT_DIR/app/src/main/AndroidManifest.xml"
 
 # 创建备份目录
-BACKUP_DIR="$SCRIPT_DIR/backups"
+if [ -d "/app/workspace" ] && [ "$SCRIPT_DIR" = "/app" ]; then
+    BACKUP_DIR="/app/workspace/deploy/backups"
+else
+    BACKUP_DIR="$SCRIPT_DIR/backups"
+fi
 mkdir -p "$BACKUP_DIR"
 
 # 先创建所有文件的备份
