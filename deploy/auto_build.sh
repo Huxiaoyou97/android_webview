@@ -42,41 +42,6 @@ if [ ! -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ]; then
     NEED_RESTORE=true
 fi
 
-# 检查并恢复activity_main.xml到原始状态
-ACTIVITY_MAIN_FILE="$PROJECT_DIR/app/src/main/res/layout/activity_main.xml"
-echo "🔧 恢复activity_main.xml到原始状态..."
-if [ -f "$ACTIVITY_MAIN_FILE" ]; then
-    # 检查是否包含非原始包名的引用
-    if ! grep -q "com\.jsmiao\.webapp\.controls\.MWebView" "$ACTIVITY_MAIN_FILE"; then
-        echo "  检测到activity_main.xml不是原始状态，正在恢复..."
-        # 直接重写为正确的原始内容
-        cat > "$ACTIVITY_MAIN_FILE" << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
-
-    <com.jsmiao.webapp.controls.MWebView
-        android:id="@+id/mWebView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-    </com.jsmiao.webapp.controls.MWebView>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
-EOF
-        echo "  ✅ activity_main.xml已恢复到原始状态"
-    else
-        echo "  ✅ activity_main.xml已是原始状态"
-    fi
-else
-    echo "  ❌ activity_main.xml文件不存在"
-    NEED_RESTORE=true
-fi
-
 if [ "$NEED_RESTORE" = "true" ]; then
     echo "  检测到Java文件缺失，正在恢复..."
     mkdir -p "$ORIGINAL_JAVA_DIR/controls"
