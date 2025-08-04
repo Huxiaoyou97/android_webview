@@ -8,6 +8,7 @@ import os
 import hashlib
 import json
 import sys
+import subprocess
 from urllib.parse import urlparse
 
 def url_to_domain(url):
@@ -66,6 +67,49 @@ def domain_to_package_name(domain):
     
     return package_name
 
+def ensure_keystore_exists(domain, keystore_path, password, alias):
+    """确保签名文件存在，如果不存在则创建"""
+    # 获取绝对路径
+    if keystore_path.startswith('../'):
+        # 相对路径转换为绝对路径
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(base_dir)
+        keystore_abs_path = os.path.join(parent_dir, keystore_path.replace('../', ''))
+    else:
+        keystore_abs_path = keystore_path
+    
+    # 确保目录存在
+    keystore_dir = os.path.dirname(keystore_abs_path)
+    os.makedirs(keystore_dir, exist_ok=True)
+    
+    # 如果文件不存在，创建新的
+    if not os.path.exists(keystore_abs_path):
+        print(f"创建新的签名文件: {keystore_abs_path}")
+        
+        # 生成自签名证书
+        dname = f"CN={domain}, OU=Mobile, O=Company, L=City, ST=State, C=US"
+        cmd = [
+            'keytool', '-genkey',
+            '-v', '-keystore', keystore_abs_path,
+            '-alias', alias,
+            '-keyalg', 'RSA',
+            '-keysize', '2048',
+            '-validity', '10000',
+            '-storepass', password,
+            '-keypass', password,
+            '-dname', dname,
+            '-noprompt'
+        ]
+        
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            print(f"✅ 签名文件创建成功")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ 创建签名文件失败: {e.stderr}")
+            raise
+    else:
+        print(f"签名文件已存在: {keystore_abs_path}")
+
 def generate_domain_config(app_url):
     """生成域名配置"""
     domain = url_to_domain(app_url)
@@ -84,6 +128,9 @@ def generate_domain_config(app_url):
         # 宿主机环境：使用绝对路径
         base_dir = os.path.dirname(os.path.abspath(__file__))
         keystore_path = os.path.join(base_dir, 'keystores', f"{domain.replace('.', '_')}.jks")
+    
+    # 确保签名文件存在
+    ensure_keystore_exists(domain, keystore_path, password, alias)
     
     config = {
         'domain': domain,
