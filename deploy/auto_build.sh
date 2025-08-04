@@ -458,7 +458,7 @@ cat > "$DYNAMIC_CONFIG" << EOF
 # 动态配置文件 - 由 auto_build.sh 自动生成
 app.domainName=$DOMAIN
 app.packageName=$PACKAGE_NAME
-app.namespace=$PACKAGE_NAME
+# app.namespace=$PACKAGE_NAME
 keystore.storeFile=$KEYSTORE_PATH
 keystore.storePassword=$KEYSTORE_PASSWORD
 keystore.alias=$KEY_ALIAS
