@@ -415,16 +415,6 @@ if [ -n "$DOMAIN_CONFIG" ] && [ "$DOMAIN_CONFIG" != "" ]; then
     echo "  域名: '$DOMAIN'"
     echo "  包名: '$PACKAGE_NAME'"  
     echo "  签名文件: '$KEYSTORE_PATH'"
-    
-    # 在Docker环境中，需要转换路径格式
-    if [ -n "$KEYSTORE_PATH" ]; then
-        KEYSTORE_RELATIVE_PATH=$(basename "$KEYSTORE_PATH")
-        if [[ "$KEYSTORE_PATH" == *"/deploy/keystores/"* ]]; then
-            # 在Docker环境中使用相对于项目根目录的路径
-            KEYSTORE_PATH="../deploy/keystores/$KEYSTORE_RELATIVE_PATH"
-            echo "  转换后路径: '$KEYSTORE_PATH'"
-        fi
-    fi
 else
     echo "❌ 域名配置为空，使用默认配置"
     # 使用默认配置

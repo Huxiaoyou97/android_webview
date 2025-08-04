@@ -78,8 +78,8 @@ def generate_domain_config(app_url):
     # 检测环境并设置路径
     current_dir = os.getcwd()
     if '/app' in current_dir or os.path.exists('/app/workspace'):
-        # Docker环境：使用相对路径
-        keystore_path = f"keystores/{domain.replace('.', '_')}.jks"
+        # Docker环境：使用相对于项目根目录的路径
+        keystore_path = f"../deploy/keystores/{domain.replace('.', '_')}.jks"
     else:
         # 宿主机环境：使用绝对路径
         base_dir = os.path.dirname(os.path.abspath(__file__))
