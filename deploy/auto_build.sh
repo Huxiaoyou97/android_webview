@@ -216,20 +216,62 @@ if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
     echo "  包名已变更，重新组织目录结构..."
     echo "  新包名目录: $NEW_PACKAGE_DIR"
     
+    # 检查源文件是否存在
+    if [ ! -f "$MAINACTIVITY_DIR/MainActivity.java" ]; then
+        echo "错误：源文件 MainActivity.java 不存在: $MAINACTIVITY_DIR/MainActivity.java"
+        exit 1
+    fi
+    
     # 先保存原始文件
     TEMP_DIR="/tmp/android_webview_temp_$$"
     mkdir -p "$TEMP_DIR/controls"
-    cp "$MAINACTIVITY_DIR/MainActivity.java" "$TEMP_DIR/" 2>/dev/null || true
-    cp "$MAINACTIVITY_DIR/MyApplication.java" "$TEMP_DIR/" 2>/dev/null || true
-    cp "$MAINACTIVITY_DIR/controls/MWebView.java" "$TEMP_DIR/controls/" 2>/dev/null || true
+    
+    # 复制文件并检查是否成功
+    if [ -f "$MAINACTIVITY_DIR/MainActivity.java" ]; then
+        cp "$MAINACTIVITY_DIR/MainActivity.java" "$TEMP_DIR/" || {
+            echo "错误：无法复制 MainActivity.java"
+            exit 1
+        }
+    fi
+    
+    if [ -f "$MAINACTIVITY_DIR/MyApplication.java" ]; then
+        cp "$MAINACTIVITY_DIR/MyApplication.java" "$TEMP_DIR/" || {
+            echo "错误：无法复制 MyApplication.java"
+            exit 1
+        }
+    fi
+    
+    if [ -f "$MAINACTIVITY_DIR/controls/MWebView.java" ]; then
+        cp "$MAINACTIVITY_DIR/controls/MWebView.java" "$TEMP_DIR/controls/" || {
+            echo "错误：无法复制 MWebView.java"
+            exit 1
+        }
+    fi
     
     # 创建新的包名目录
     mkdir -p "$NEW_PACKAGE_DIR/controls"
     
     # 从临时目录复制文件到新目录
-    cp "$TEMP_DIR/MainActivity.java" "$NEW_PACKAGE_DIR/"
-    cp "$TEMP_DIR/MyApplication.java" "$NEW_PACKAGE_DIR/"
-    cp "$TEMP_DIR/controls/MWebView.java" "$NEW_PACKAGE_DIR/controls/"
+    if [ -f "$TEMP_DIR/MainActivity.java" ]; then
+        cp "$TEMP_DIR/MainActivity.java" "$NEW_PACKAGE_DIR/" || {
+            echo "错误：无法移动 MainActivity.java 到新目录"
+            exit 1
+        }
+    fi
+    
+    if [ -f "$TEMP_DIR/MyApplication.java" ]; then
+        cp "$TEMP_DIR/MyApplication.java" "$NEW_PACKAGE_DIR/" || {
+            echo "错误：无法移动 MyApplication.java 到新目录"
+            exit 1
+        }
+    fi
+    
+    if [ -f "$TEMP_DIR/controls/MWebView.java" ]; then
+        cp "$TEMP_DIR/controls/MWebView.java" "$NEW_PACKAGE_DIR/controls/" || {
+            echo "错误：无法移动 MWebView.java 到新目录"
+            exit 1
+        }
+    fi
     
     # 删除旧目录，避免编译时使用错误的文件
     echo "  删除旧目录..."
