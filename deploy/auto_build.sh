@@ -42,6 +42,25 @@ if [ ! -f "$ORIGINAL_JAVA_DIR/controls/MWebView.java" ]; then
     NEED_RESTORE=true
 fi
 
+# 检查并恢复activity_main.xml到原始状态
+ACTIVITY_MAIN_FILE="$PROJECT_DIR/app/src/main/res/layout/activity_main.xml"
+echo "🔧 恢复activity_main.xml到原始状态..."
+if [ -f "$ACTIVITY_MAIN_FILE" ]; then
+    # 检查是否包含非原始包名的引用
+    if grep -q "com\..*\.controls\.MWebView" "$ACTIVITY_MAIN_FILE" && ! grep -q "com\.jsmiao\.webapp\.controls\.MWebView" "$ACTIVITY_MAIN_FILE"; then
+        echo "  检测到activity_main.xml包含非原始包名引用，正在恢复..."
+        # 恢复为原始包名引用
+        sed -i.tmp 's|<[^>]*\.controls\.MWebView|<com.jsmiao.webapp.controls.MWebView|g' "$ACTIVITY_MAIN_FILE"
+        rm -f "$ACTIVITY_MAIN_FILE.tmp"
+        echo "  ✅ activity_main.xml已恢复到原始状态"
+    else
+        echo "  ✅ activity_main.xml已是原始状态"
+    fi
+else
+    echo "  ❌ activity_main.xml文件不存在"
+    NEED_RESTORE=true
+fi
+
 if [ "$NEED_RESTORE" = "true" ]; then
     echo "  检测到Java文件缺失，正在恢复..."
     mkdir -p "$ORIGINAL_JAVA_DIR/controls"
