@@ -701,6 +701,24 @@ rm -f "$STRINGS_FILE.tmp"
 
 echo "  App 名称已更新为: $APP_NAME"
 
+# 3.5. 修改activity_main.xml中的MWebView包名引用
+echo "正在修改 activity_main.xml 中的包名引用..."
+ACTIVITY_MAIN_FILE="$PROJECT_DIR/app/src/main/res/layout/activity_main.xml"
+
+if [ -f "$ACTIVITY_MAIN_FILE" ]; then
+    # 创建备份
+    cp "$ACTIVITY_MAIN_FILE" "$BACKUP_DIR/activity_main.xml.backup"
+    
+    # 替换MWebView的包名引用
+    if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
+        sed -i.tmp "s|com.jsmiao.webapp.controls.MWebView|$PACKAGE_NAME.controls.MWebView|g" "$ACTIVITY_MAIN_FILE"
+        rm -f "$ACTIVITY_MAIN_FILE.tmp"
+        echo "  activity_main.xml 中的包名引用已更新"
+    fi
+else
+    echo "  警告：activity_main.xml 文件不存在"
+fi
+
 # 4. 清理之前的构建文件
 echo "正在清理之前的构建文件..."
 cd "$PROJECT_DIR"

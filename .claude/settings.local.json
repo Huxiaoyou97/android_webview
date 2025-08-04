@@ -10,7 +10,9 @@
       "Bash(keytool:*)",
       "Bash(rm:*)",
       "Bash(./test_r_fix.sh:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }
