@@ -316,6 +316,24 @@ if [ -d "$JAVA_DIR" ]; then
     find "$JAVA_DIR" -type d -empty -delete 2>/dev/null || true
 fi
 
+# 🔧 恢复activity_main.xml到原始状态
+echo "🔧 恢复activity_main.xml到原始状态..."
+ACTIVITY_MAIN_FILE="$PROJECT_DIR/app/src/main/res/layout/activity_main.xml"
+if [ -f "$ACTIVITY_MAIN_FILE" ]; then
+    # 检查是否包含非原始包名的MWebView引用
+    if ! grep -q "com\.jsmiao\.webapp\.controls\.MWebView" "$ACTIVITY_MAIN_FILE"; then
+        echo "  检测到activity_main.xml包含非原始包名引用，正在恢复..."
+        # 恢复开始标签和结束标签的包名引用
+        sed -i.tmp 's|<[^[:space:]>]*\.controls\.MWebView|<com.jsmiao.webapp.controls.MWebView|g; s|</[^[:space:]>]*\.controls\.MWebView|</com.jsmiao.webapp.controls.MWebView|g' "$ACTIVITY_MAIN_FILE"
+        rm -f "$ACTIVITY_MAIN_FILE.tmp"
+        echo "  ✅ activity_main.xml已恢复到原始状态"
+    else
+        echo "  ✅ activity_main.xml已是原始状态"
+    fi
+else
+    echo "  ❌ activity_main.xml文件不存在"
+fi
+
 # 配置文件路径
 if [ -d "/app/workspace" ] && [ "$SCRIPT_DIR" = "/app" ]; then
     # Docker环境中的路径
