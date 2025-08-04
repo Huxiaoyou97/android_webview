@@ -715,6 +715,8 @@ fi
 # 4. 清理之前的构建文件
 echo "正在清理之前的构建文件..."
 cd "$PROJECT_DIR"
+# 删除deploy目录下的旧APK文件
+rm -f "$SCRIPT_DIR"/*-app.apk 2>/dev/null || true
 ./gradlew clean
 
 # 5. 构建APK

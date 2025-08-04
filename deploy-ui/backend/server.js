@@ -248,7 +248,13 @@ const buildAPK = async (appName, appUrl, iconPath) => {
             const apkFiles = await glob(apkPattern)
             
             if (apkFiles.length > 0) {
-              const latestApk = apkFiles[0] // 取第一个匹配的文件
+              // 获取最新的APK文件（按修改时间排序）
+              const sortedApkFiles = apkFiles.map(file => ({
+                path: file,
+                mtime: fs.statSync(file).mtime
+              })).sort((a, b) => b.mtime - a.mtime)
+              
+              const latestApk = sortedApkFiles[0].path
               const apkFileName = path.basename(latestApk)
               const buildIdPrefix = buildId.substring(0,8)
               const finalApkName = `${buildIdPrefix}-${apkFileName}`
