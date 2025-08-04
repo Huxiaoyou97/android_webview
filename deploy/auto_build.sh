@@ -7,6 +7,13 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# 清理之前构建的非原始包名目录
+echo "🧹 清理之前构建的包名目录..."
+JAVA_DIR="$PROJECT_DIR/app/src/main/java"
+if [ -d "$JAVA_DIR" ]; then
+    find "$JAVA_DIR" -type d -path "*/com/*" ! -path "*/com/jsmiao/webapp*" -exec rm -rf {} + 2>/dev/null || true
+fi
+
 # 配置文件路径
 CONFIG_FILE="$SCRIPT_DIR/config.json"
 DOMAIN_MANAGER="$SCRIPT_DIR/domain_manager.py"
@@ -184,21 +191,54 @@ MAINACTIVITY_DIR="$PROJECT_DIR/app/src/main/java/com/jsmiao/webapp"
 MAINACTIVITY_FILE="$MAINACTIVITY_DIR/MainActivity.java"
 ANDROIDMANIFEST_FILE="$PROJECT_DIR/app/src/main/AndroidManifest.xml"
 
-# 如果包名发生变化，需要重新组织目录结构
+# 创建备份目录
+BACKUP_DIR="$SCRIPT_DIR/backups"
+mkdir -p "$BACKUP_DIR"
+
+# 先创建所有文件的备份
+if [ -f "$MAINACTIVITY_FILE" ]; then
+    cp "$MAINACTIVITY_FILE" "$BACKUP_DIR/MainActivity.java.backup"
+fi
+if [ -f "$MAINACTIVITY_DIR/MyApplication.java" ]; then
+    cp "$MAINACTIVITY_DIR/MyApplication.java" "$BACKUP_DIR/MyApplication.java.backup"
+fi
+if [ -f "$MAINACTIVITY_DIR/controls/MWebView.java" ]; then
+    cp "$MAINACTIVITY_DIR/controls/MWebView.java" "$BACKUP_DIR/MWebView.java.backup"
+fi
+if [ -f "$ANDROIDMANIFEST_FILE" ]; then
+    cp "$ANDROIDMANIFEST_FILE" "$BACKUP_DIR/AndroidManifest.xml.backup"
+fi
+
+# 如果包名发生变化，需要删除旧目录的文件
 NEW_PACKAGE_DIR="$PROJECT_DIR/app/src/main/java/$(echo $PACKAGE_NAME | tr '.' '/')"
 
 if [ "$PACKAGE_NAME" != "com.jsmiao.webapp" ]; then
     echo "  包名已变更，重新组织目录结构..."
     echo "  新包名目录: $NEW_PACKAGE_DIR"
     
-    # 创建新的包名目录
-    mkdir -p "$NEW_PACKAGE_DIR"
+    # 先保存原始文件
+    TEMP_DIR="/tmp/android_webview_temp_$$"
+    mkdir -p "$TEMP_DIR/controls"
+    cp "$MAINACTIVITY_DIR/MainActivity.java" "$TEMP_DIR/" 2>/dev/null || true
+    cp "$MAINACTIVITY_DIR/MyApplication.java" "$TEMP_DIR/" 2>/dev/null || true
+    cp "$MAINACTIVITY_DIR/controls/MWebView.java" "$TEMP_DIR/controls/" 2>/dev/null || true
     
-    # 复制文件到新目录
-    if [ -d "$MAINACTIVITY_DIR" ]; then
-        cp -r "$MAINACTIVITY_DIR"/* "$NEW_PACKAGE_DIR/"
-        echo "  ✅ 文件已复制到新包名目录"
-    fi
+    # 创建新的包名目录
+    mkdir -p "$NEW_PACKAGE_DIR/controls"
+    
+    # 从临时目录复制文件到新目录
+    cp "$TEMP_DIR/MainActivity.java" "$NEW_PACKAGE_DIR/"
+    cp "$TEMP_DIR/MyApplication.java" "$NEW_PACKAGE_DIR/"
+    cp "$TEMP_DIR/controls/MWebView.java" "$NEW_PACKAGE_DIR/controls/"
+    
+    # 删除旧目录，避免编译时使用错误的文件
+    echo "  删除旧目录..."
+    rm -rf "$MAINACTIVITY_DIR"
+    
+    # 清理临时目录
+    rm -rf "$TEMP_DIR"
+    
+    echo "  ✅ 文件已移动到新包名目录，旧目录已删除"
     
     # 更新所有Java文件的路径
     MAINACTIVITY_FILE="$NEW_PACKAGE_DIR/MainActivity.java"
@@ -219,14 +259,6 @@ if [ ! -f "$ANDROIDMANIFEST_FILE" ]; then
     exit 1
 fi
 
-# 创建备份目录
-BACKUP_DIR="$SCRIPT_DIR/backups"
-mkdir -p "$BACKUP_DIR"
-
-# 创建备份
-cp "$MAINACTIVITY_FILE" "$BACKUP_DIR/MainActivity.java.backup"
-cp "$ANDROIDMANIFEST_FILE" "$BACKUP_DIR/AndroidManifest.xml.backup"
-
 # 使用Python替换MainActivity.java中的URL和包名
 python3 -c "
 import re
@@ -240,11 +272,17 @@ with open('$MAINACTIVITY_FILE', 'r') as f:
 content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
 
 # 添加或更新R类的import语句
-if 'import ' in content and '$PACKAGE_NAME.R;' not in content:
-    # 删除旧的R import（如果存在）
-    content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
-    
-    # 在package声明后添加新的R import
+# 删除旧的R import（如果存在）
+content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
+
+# 在其他import语句之后添加新的R import
+import_section = re.search(r'(import\s+[^;]+;\s*\n)+', content, flags=re.MULTILINE)
+if import_section:
+    # 在最后一个import后添加R import
+    last_import_end = import_section.end()
+    content = content[:last_import_end] + f'import $PACKAGE_NAME.R;\n' + content[last_import_end:]
+else:
+    # 如果没有import语句，在package声明后添加
     content = re.sub(r'(package\s+[^;]+;\s*\n)', r'\1\nimport $PACKAGE_NAME.R;\n', content, flags=re.MULTILINE)
 
 # 替换导入语句中的包名
