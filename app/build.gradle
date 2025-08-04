@@ -14,7 +14,7 @@ if (dynamicConfigFile.exists()) {
 }
 
 android {
-    namespace dynamicConfig.getProperty('app.namespace', 'com.jsmiao.webapp')
+    namespace 'com.jsmiao.webapp'
     compileSdk 34
 
     defaultConfig {

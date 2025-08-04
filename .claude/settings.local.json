@@ -12,7 +12,8 @@
       "Bash(./test_r_fix.sh:*)",
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(./gradlew:*)"
     ],
     "deny": []
   }
