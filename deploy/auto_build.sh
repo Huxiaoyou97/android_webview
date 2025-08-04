@@ -636,11 +636,11 @@ with open('$MAINACTIVITY_FILE', 'r') as f:
 # 替换包名声明（只有包名不同时才替换）
 if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
     content = re.sub(r'^package\s+[^;]+;', 'package $PACKAGE_NAME;', content, flags=re.MULTILINE)
-    # 添加正确的R类import - 使用新包名下的R类
+    # 添加正确的R类import - 由于namespace固定为com.jsmiao.webapp，R类始终在原始包下
     # 先删除任何已存在的R类import
     content = re.sub(r'import\s+[^;]*\.R;\s*\n', '', content, flags=re.MULTILINE)
-    # 在androidx.appcompat.app.AppCompatActivity后添加新包名的R类import
-    content = re.sub(r'(import androidx\.appcompat\.app\.AppCompatActivity;\s*\n)', r'\1import $PACKAGE_NAME.R;\n', content)
+    # 在androidx.appcompat.app.AppCompatActivity后添加原始包名的R类import
+    content = re.sub(r'(import androidx\.appcompat\.app\.AppCompatActivity;\s*\n)', r'\1import com.jsmiao.webapp.R;\n', content)
 
 # 替换导入语句中的包名（只有包名不同时才替换）
 if '$PACKAGE_NAME' != 'com.jsmiao.webapp':
