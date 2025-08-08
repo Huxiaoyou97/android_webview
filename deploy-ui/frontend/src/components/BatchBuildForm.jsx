@@ -260,10 +260,18 @@ const BatchBuildForm = ({ onBatchStart, onBatchProgress, onBatchComplete, isBuil
             value={formData.urls}
             onChange={handleInputChange}
             className={`input-field ${errors.urls ? 'border-red-500' : ''}`}
+            style={{
+              whiteSpace: 'pre',
+              overflowX: 'auto',
+              overflowY: 'auto',
+              wordBreak: 'keep-all',
+              overflowWrap: 'normal'
+            }}
             placeholder={`https://google.raja999v.com/?sdmode=3&fb_pixel_id=26
 https://google.raja999v.com/?sdmode=3&fb_pixel_id=27
 https://google.raja999v.com/?sdmode=3&fb_pixel_id=28`}
             rows={8}
+            wrap="off"
             disabled={isBuilding}
           />
           {errors.urls && <p className="text-red-500 text-sm mt-1">{errors.urls}</p>}
