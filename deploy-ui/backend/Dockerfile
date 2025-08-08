@@ -1,16 +1,19 @@
 # 使用带有JDK的Node.js镜像
 FROM node:18
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
+# 使用国内镜像源加速apt安装
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
     unzip \
     curl \
     git \
     python3 \
     python3-pip \
-    default-jdk \
-    && rm -rf /var/lib/apt/lists/*
+    default-jdk-headless \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # 设置Java环境变量
 ENV JAVA_HOME=/usr/lib/jvm/default-java
