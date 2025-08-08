@@ -26,6 +26,11 @@ const buildStatus = {
   buildId: null
 }
 
+// 批量构建状态存储
+const batchBuildStatus = new Map() // 存储批量构建任务
+const buildQueue = [] // 构建队列
+let isProcessingQueue = false // 是否正在处理队列
+
 // 文件清理记录
 const fileCleanupQueue = new Map() // 存储文件路径和过期时间
 
@@ -174,14 +179,26 @@ const processIcon = async (inputPath, outputPath) => {
   }
 }
 
+// 提取URL中的fb_pixel_id参数
+const extractFbPixelId = (url) => {
+  try {
+    const urlObj = new URL(url)
+    const params = new URLSearchParams(urlObj.search)
+    return params.get('fb_pixel_id') || null
+  } catch {
+    return null
+  }
+}
+
 // 构建APK
-const buildAPK = async (appName, appUrl, iconPath) => {
+const buildAPK = async (appName, appUrl, iconPath, apkPrefix = null) => {
   return new Promise((resolve, reject) => {
     const buildId = uuidv4()
     const projectDir = '/app/workspace'  // 挂载的项目目录
     const deployDir = path.join(projectDir, 'deploy')
     const configFile = path.join(deployDir, 'config.json')
     const iconFile = path.join(deployDir, 'icon.png')
+    let finalApkName = '' // 声明在更大的作用域
     
     try {
       // 复制图标文件
@@ -256,8 +273,23 @@ const buildAPK = async (appName, appUrl, iconPath) => {
               
               const latestApk = sortedApkFiles[0].path
               const apkFileName = path.basename(latestApk)
-              const buildIdPrefix = buildId.substring(0,8)
-              const finalApkName = `${buildIdPrefix}-${apkFileName}`
+              
+              // 如果提供了apkPrefix，使用自定义命名
+              if (apkPrefix) {
+                const fbPixelId = extractFbPixelId(appUrl)
+                if (fbPixelId) {
+                  finalApkName = `${apkPrefix}${fbPixelId}.apk`
+                } else {
+                  // 如果没有fb_pixel_id，使用域名
+                  const domain = new URL(appUrl).hostname.replace(/\./g, '_')
+                  finalApkName = `${apkPrefix}${domain}.apk`
+                }
+              } else {
+                // 保持原有的命名方式
+                const buildIdPrefix = buildId.substring(0,8)
+                finalApkName = `${buildIdPrefix}-${apkFileName}`
+              }
+              
               const publicApkPath = path.join(publicDir, finalApkName)
               
               fs.copyFileSync(latestApk, publicApkPath)
@@ -286,7 +318,11 @@ const buildAPK = async (appName, appUrl, iconPath) => {
         buildStatus.progress = 100
         buildStatus.buildId = buildId
         
-        resolve(buildStatus.success)
+        resolve({
+          success: buildStatus.success,
+          downloadUrl: buildStatus.downloadUrl,
+          apkName: finalApkName
+        })
       })
       
     } catch (error) {
@@ -295,6 +331,7 @@ const buildAPK = async (appName, appUrl, iconPath) => {
       buildStatus.completed = true
       buildStatus.isBuilding = false
       reject(error)
+      return
     }
   })
 }
@@ -377,6 +414,161 @@ app.get('/api/download/:filename', (req, res) => {
   } else {
     res.status(404).json({ error: '文件未找到' })
   }
+})
+
+// 处理构建队列
+const processQueue = async () => {
+  if (isProcessingQueue || buildQueue.length === 0) {
+    return
+  }
+
+  isProcessingQueue = true
+  
+  while (buildQueue.length > 0) {
+    const task = buildQueue.shift()
+    const { batchId, buildIndex, appName, appUrl, iconPath, apkPrefix } = task
+    
+    if (batchBuildStatus.has(batchId)) {
+      const batchStatus = batchBuildStatus.get(batchId)
+      
+      // 更新当前构建信息
+      const fbPixelId = extractFbPixelId(appUrl)
+      const apkName = fbPixelId ? `${apkPrefix}${fbPixelId}.apk` : `${apkPrefix}${new URL(appUrl).hostname.replace(/\./g, '_')}.apk`
+      
+      batchStatus.currentBuild = {
+        index: buildIndex,
+        appUrl,
+        apkName
+      }
+      
+      try {
+        console.log(`开始构建 ${buildIndex + 1}/${batchStatus.totalBuilds}: ${apkName}`)
+        
+        // 执行构建
+        const buildResult = await buildAPK(appName, appUrl, iconPath, apkPrefix)
+        
+        if (buildResult.success && buildResult.downloadUrl) {
+          batchStatus.completed.push({
+            appUrl,
+            apkName: buildResult.apkName || apkName,
+            downloadUrl: buildResult.downloadUrl,
+            success: true
+          })
+        } else {
+          batchStatus.failed.push({
+            appUrl,
+            apkName,
+            error: '构建失败',
+            success: false
+          })
+        }
+      } catch (error) {
+        console.error(`构建失败 ${apkName}:`, error)
+        batchStatus.failed.push({
+          appUrl,
+          apkName,
+          error: error.message,
+          success: false
+        })
+      }
+      
+      // 检查是否所有任务完成
+      if (batchStatus.completed.length + batchStatus.failed.length >= batchStatus.totalBuilds) {
+        batchStatus.allCompleted = true
+        batchStatus.currentBuild = null
+        console.log(`批量构建完成: ${batchStatus.completed.length} 成功, ${batchStatus.failed.length} 失败`)
+      }
+    }
+  }
+  
+  isProcessingQueue = false
+}
+
+// 批量构建API
+app.post('/api/batch-build', upload.single('icon'), async (req, res) => {
+  try {
+    const { appName, apkPrefix, urls } = req.body
+    const iconFile = req.file
+    
+    if (!appName || !apkPrefix || !urls || !iconFile) {
+      return res.status(400).json({ error: '缺少必要的参数' })
+    }
+    
+    const urlList = JSON.parse(urls)
+    if (!Array.isArray(urlList) || urlList.length === 0) {
+      return res.status(400).json({ error: '没有有效的URL' })
+    }
+    
+    // 创建批量任务ID
+    const batchId = uuidv4()
+    
+    // 处理图标
+    const processedIconPath = path.join(uploadsDir, 'batch-' + iconFile.filename)
+    const iconProcessed = await processIcon(iconFile.path, processedIconPath)
+    
+    if (!iconProcessed) {
+      return res.status(400).json({ error: '图标处理失败' })
+    }
+    
+    // 初始化批量构建状态
+    batchBuildStatus.set(batchId, {
+      id: batchId,
+      appName,
+      apkPrefix,
+      totalBuilds: urlList.length,
+      queue: urlList.map((item, index) => ({
+        index,
+        url: item.url,
+        fbPixelId: item.fbPixelId
+      })),
+      completed: [],
+      failed: [],
+      currentBuild: null,
+      allCompleted: false,
+      startTime: new Date().toISOString()
+    })
+    
+    // 将所有任务添加到队列
+    urlList.forEach((item, index) => {
+      buildQueue.push({
+        batchId,
+        buildIndex: index,
+        appName,
+        appUrl: item.url,
+        iconPath: processedIconPath,
+        apkPrefix
+      })
+    })
+    
+    // 将文件添加到清理队列
+    addToCleanupQueue(iconFile.path)
+    addToCleanupQueue(processedIconPath)
+    
+    // 开始处理队列
+    processQueue()
+    
+    res.json({ 
+      message: '批量构建已开始', 
+      batchId,
+      totalBuilds: urlList.length
+    })
+    
+  } catch (error) {
+    console.error('Batch API Error:', error)
+    res.status(500).json({ error: '服务器错误: ' + error.message })
+  }
+})
+
+// 获取批量构建状态
+app.get('/api/batch-build/status/:batchId', (req, res) => {
+  const { batchId } = req.params
+  
+  if (!batchBuildStatus.has(batchId)) {
+    return res.status(404).json({ error: '未找到批量构建任务' })
+  }
+  
+  const status = batchBuildStatus.get(batchId)
+  res.json(status)
 })
 
 // 健康检查

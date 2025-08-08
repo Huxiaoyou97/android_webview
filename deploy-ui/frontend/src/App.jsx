@@ -1,15 +1,30 @@
 import { useState } from 'react'
 import BuildForm from './components/BuildForm'
+import BatchBuildForm from './components/BatchBuildForm'
 import ProgressModal from './components/ProgressModal'
+import BatchProgressModal from './components/BatchProgressModal'
 import DownloadModal from './components/DownloadModal'
 
 function App() {
+  const [buildMode, setBuildMode] = useState('single') // 'single' or 'batch'
   const [isBuilding, setIsBuilding] = useState(false)
   const [buildProgress, setBuildProgress] = useState(0)
   const [buildLog, setBuildLog] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
   const [showDownloadModal, setShowDownloadModal] = useState(false)
   const [appName, setAppName] = useState('')
+  
+  // Batch build states
+  const [batchProgress, setBatchProgress] = useState({
+    completed: 0,
+    total: 0,
+    progress: 0,
+    message: '',
+    isComplete: false,
+    successBuilds: [],
+    failedBuilds: []
+  })
+  const [showBatchModal, setShowBatchModal] = useState(false)
 
   const handleBuildStart = (name) => {
     setAppName(name)
@@ -38,6 +53,56 @@ function App() {
     setBuildLog('')
   }
 
+  // Batch build handlers
+  const handleBatchStart = (totalBuilds) => {
+    setIsBuilding(true)
+    setShowBatchModal(true)
+    setBatchProgress({
+      completed: 0,
+      total: totalBuilds,
+      progress: 0,
+      message: '准备开始批量构建...',
+      isComplete: false,
+      successBuilds: [],
+      failedBuilds: []
+    })
+  }
+
+  const handleBatchProgress = (completed, total, progress, message) => {
+    setBatchProgress(prev => ({
+      ...prev,
+      completed,
+      total,
+      progress,
+      message
+    }))
+  }
+
+  const handleBatchComplete = (success, successBuilds = [], failedBuilds = []) => {
+    setIsBuilding(false)
+    setBatchProgress(prev => ({
+      ...prev,
+      isComplete: true,
+      successBuilds,
+      failedBuilds,
+      progress: 100,
+      message: `批量构建完成: ${successBuilds.length} 成功, ${failedBuilds.length} 失败`
+    }))
+  }
+
+  const handleBatchModalClose = () => {
+    setShowBatchModal(false)
+    setBatchProgress({
+      completed: 0,
+      total: 0,
+      progress: 0,
+      message: '',
+      isComplete: false,
+      successBuilds: [],
+      failedBuilds: []
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -50,14 +115,49 @@ function App() {
           </p>
         </div>
 
+        {/* Mode Selector */}
+        <div className="flex justify-center mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-1 inline-flex">
+            <button
+              onClick={() => setBuildMode('single')}
+              className={`px-6 py-2 rounded-md font-medium transition-all ${
+                buildMode === 'single' 
+                  ? 'bg-primary-500 text-white' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              单个构建
+            </button>
+            <button
+              onClick={() => setBuildMode('batch')}
+              className={`px-6 py-2 rounded-md font-medium transition-all ${
+                buildMode === 'batch' 
+                  ? 'bg-primary-500 text-white' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              批量构建
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <BuildForm 
-              onBuildStart={handleBuildStart}
-              onBuildProgress={handleBuildProgress}
-              onBuildComplete={handleBuildComplete}
-              isBuilding={isBuilding}
-            />
+            {buildMode === 'single' ? (
+              <BuildForm 
+                onBuildStart={handleBuildStart}
+                onBuildProgress={handleBuildProgress}
+                onBuildComplete={handleBuildComplete}
+                isBuilding={isBuilding}
+              />
+            ) : (
+              <BatchBuildForm
+                onBatchStart={handleBatchStart}
+                onBatchProgress={handleBatchProgress}
+                onBatchComplete={handleBatchComplete}
+                isBuilding={isBuilding}
+              />
+            )}
           </div>
 
           <div className="space-y-6">
@@ -140,6 +240,18 @@ function App() {
         onClose={handleDownloadClose}
         downloadUrl={downloadUrl}
         appName={appName}
+      />
+
+      <BatchProgressModal
+        isOpen={showBatchModal}
+        onClose={handleBatchModalClose}
+        completedBuilds={batchProgress.completed}
+        totalBuilds={batchProgress.total}
+        currentProgress={batchProgress.progress}
+        currentMessage={batchProgress.message}
+        isComplete={batchProgress.isComplete}
+        successBuilds={batchProgress.successBuilds}
+        failedBuilds={batchProgress.failedBuilds}
       />
     </div>
   )
