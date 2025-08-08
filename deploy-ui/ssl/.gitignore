@@ -1,0 +1,13 @@
+# # 忽略真实的证书文件
+# *.pem
+# *.crt
+# *.key
+# *.cer
+# *.p12
+# *.pfx
+
+# # 保留示例文件
+# !*.example
+
+# # 保留README
+# !README.md
