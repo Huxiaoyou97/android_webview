@@ -68,13 +68,14 @@ function App() {
     })
   }
 
-  const handleBatchProgress = (completed, total, progress, message) => {
+  const handleBatchProgress = (completed, total, progress, message, currentBuildProgress) => {
     setBatchProgress(prev => ({
       ...prev,
       completed,
       total,
       progress,
-      message
+      message,
+      currentBuildProgress: currentBuildProgress || 0
     }))
   }
 
@@ -249,6 +250,7 @@ function App() {
         totalBuilds={batchProgress.total}
         currentProgress={batchProgress.progress}
         currentMessage={batchProgress.message}
+        currentBuildProgress={batchProgress.currentBuildProgress}
         isComplete={batchProgress.isComplete}
         successBuilds={batchProgress.successBuilds}
         failedBuilds={batchProgress.failedBuilds}

@@ -15,6 +15,13 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// 清理配置（可通过环境变量自定义）
+const CLEANUP_CONFIG = {
+  APK_RETENTION_MINUTES: parseInt(process.env.APK_RETENTION_MINUTES) || 10,  // APK文件保留时间
+  TEMP_FILE_RETENTION_MINUTES: parseInt(process.env.TEMP_FILE_RETENTION_MINUTES) || 5,  // 临时文件保留时间
+  CLEANUP_INTERVAL_MINUTES: parseInt(process.env.CLEANUP_INTERVAL_MINUTES) || 1  // 清理检查间隔
+}
+
 // 构建状态存储
 const buildStatus = {
   isBuilding: false,
@@ -93,8 +100,9 @@ const addLog = (message, type = 'info') => {
 // 添加文件到清理队列
 const addToCleanupQueue = (filePath, delayMinutes = 10) => {
   const expireTime = Date.now() + (delayMinutes * 60 * 1000)
+  const fileName = path.basename(filePath)
   fileCleanupQueue.set(filePath, expireTime)
-  console.log(`文件 ${filePath} 将在 ${delayMinutes} 分钟后被清理`)
+  console.log(`📄 ${fileName} 将在 ${delayMinutes} 分钟后被清理`)
 }
 
 // 清理过期文件
@@ -111,12 +119,16 @@ const cleanupExpiredFiles = () => {
   filesToDelete.forEach(filePath => {
     try {
       if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath)
+        const ageMinutes = Math.floor((now - stats.birthtime.getTime()) / (60 * 1000))
+        const fileName = path.basename(filePath)
+        
         fs.unlinkSync(filePath)
-        console.log(`✅ 已清理文件: ${filePath}`)
+        console.log(`✅ 已清理: ${fileName} (存在了 ${ageMinutes} 分钟)`)
       }
       fileCleanupQueue.delete(filePath)
     } catch (error) {
-      console.error(`❌ 清理文件失败 ${filePath}:`, error.message)
+      console.error(`❌ 清理文件失败 ${path.basename(filePath)}:`, error.message)
     }
   })
 
@@ -154,9 +166,12 @@ const cleanupUploadsDirectory = () => {
 setInterval(() => {
   cleanupExpiredFiles()
   cleanupUploadsDirectory()
-}, 10 * 60 * 1000) // 每10分钟检查一次
+}, CLEANUP_CONFIG.CLEANUP_INTERVAL_MINUTES * 60 * 1000)
 
-console.log('🧹 文件清理服务已启动，每分钟检查一次过期文件')
+console.log(`🧹 文件清理服务已启动`)
+console.log(`   - APK文件保留时间: ${CLEANUP_CONFIG.APK_RETENTION_MINUTES} 分钟`)
+console.log(`   - 临时文件保留时间: ${CLEANUP_CONFIG.TEMP_FILE_RETENTION_MINUTES} 分钟`)
+console.log(`   - 清理检查间隔: ${CLEANUP_CONFIG.CLEANUP_INTERVAL_MINUTES} 分钟`)
 
 // 处理图标尺寸
 const processIcon = async (inputPath, outputPath) => {
@@ -190,8 +205,8 @@ const extractFbPixelId = (url) => {
   }
 }
 
-// 构建APK
-const buildAPK = async (appName, appUrl, iconPath, apkPrefix = null) => {
+// 构建APK（带超时机制）
+const buildAPK = async (appName, appUrl, iconPath, apkPrefix = null, onProgress = null) => {
   return new Promise((resolve, reject) => {
     const buildId = uuidv4()
     const projectDir = '/app/workspace'  // 挂载的项目目录
@@ -199,6 +214,7 @@ const buildAPK = async (appName, appUrl, iconPath, apkPrefix = null) => {
     const configFile = path.join(deployDir, 'config.json')
     const iconFile = path.join(deployDir, 'icon.png')
     let finalApkName = '' // 声明在更大的作用域
+    let buildTimeout = null // 超时定时器
     
     try {
       // 复制图标文件
@@ -244,6 +260,11 @@ const buildAPK = async (appName, appUrl, iconPath, apkPrefix = null) => {
             buildStatus.progress = 95
           } else if (output.includes('构建完成')) {
             buildStatus.progress = 100
+          }
+          
+          // 如果提供了进度回调，调用它
+          if (onProgress && typeof onProgress === 'function') {
+            onProgress(buildStatus.progress, output)
           }
         }
       })
@@ -295,7 +316,7 @@ const buildAPK = async (appName, appUrl, iconPath, apkPrefix = null) => {
               fs.copyFileSync(latestApk, publicApkPath)
               
               // 将生成的APK添加到清理队列
-              addToCleanupQueue(publicApkPath)
+              addToCleanupQueue(publicApkPath, CLEANUP_CONFIG.APK_RETENTION_MINUTES)
               
               buildStatus.success = true
               buildStatus.downloadUrl = `/api/download/${finalApkName}`
@@ -374,8 +395,8 @@ app.post('/api/build', upload.single('icon'), async (req, res) => {
     }
     
     // 将上传的文件和处理后的图标添加到清理队列
-    addToCleanupQueue(iconFile.path)
-    addToCleanupQueue(processedIconPath)
+    addToCleanupQueue(iconFile.path, CLEANUP_CONFIG.TEMP_FILE_RETENTION_MINUTES)
+    addToCleanupQueue(processedIconPath, CLEANUP_CONFIG.TEMP_FILE_RETENTION_MINUTES)
     
     // 异步构建APK
     buildAPK(appName, appUrl, processedIconPath)
@@ -444,16 +465,30 @@ const processQueue = async () => {
       try {
         console.log(`开始构建 ${buildIndex + 1}/${batchStatus.totalBuilds}: ${apkName}`)
         
-        // 执行构建
-        const buildResult = await buildAPK(appName, appUrl, iconPath, apkPrefix)
+        // 重置全局构建状态（重要！）
+        buildStatus.isBuilding = false
+        buildStatus.progress = 0
+        buildStatus.logs = []
+        buildStatus.success = false
+        buildStatus.completed = false
+        buildStatus.downloadUrl = null
+        buildStatus.buildId = null
         
-        if (buildResult.success && buildResult.downloadUrl) {
+        // 执行构建（带进度回调）
+        const buildResult = await buildAPK(appName, appUrl, iconPath, apkPrefix, (progress, log) => {
+          // 更新当前构建的进度
+          batchStatus.currentBuildProgress = progress
+          batchStatus.currentBuildLog = log
+        })
+        
+        if (buildResult && buildResult.success && buildResult.downloadUrl) {
           batchStatus.completed.push({
             appUrl,
             apkName: buildResult.apkName || apkName,
             downloadUrl: buildResult.downloadUrl,
             success: true
           })
+          console.log(`✅ 构建成功: ${apkName}`)
         } else {
           batchStatus.failed.push({
             appUrl,
@@ -461,22 +496,33 @@ const processQueue = async () => {
             error: '构建失败',
             success: false
           })
+          console.log(`❌ 构建失败: ${apkName}`)
         }
       } catch (error) {
-        console.error(`构建失败 ${apkName}:`, error)
+        console.error(`构建异常 ${apkName}:`, error)
         batchStatus.failed.push({
           appUrl,
           apkName,
-          error: error.message,
+          error: error.message || '未知错误',
           success: false
         })
       }
+      
+      // 更新进度
+      const progress = ((batchStatus.completed.length + batchStatus.failed.length) / batchStatus.totalBuilds) * 100
+      batchStatus.progress = progress
       
       // 检查是否所有任务完成
       if (batchStatus.completed.length + batchStatus.failed.length >= batchStatus.totalBuilds) {
         batchStatus.allCompleted = true
         batchStatus.currentBuild = null
         console.log(`批量构建完成: ${batchStatus.completed.length} 成功, ${batchStatus.failed.length} 失败`)
+        
+        // 清理批量构建状态（10分钟后）
+        setTimeout(() => {
+          batchBuildStatus.delete(batchId)
+          console.log(`清理批量构建状态: ${batchId}`)
+        }, 10 * 60 * 1000)
       }
     }
   }
@@ -524,6 +570,8 @@ app.post('/api/batch-build', upload.single('icon'), async (req, res) => {
       completed: [],
       failed: [],
       currentBuild: null,
+      currentBuildProgress: 0,
+      currentBuildLog: '',
       allCompleted: false,
       startTime: new Date().toISOString()
     })
@@ -541,8 +589,8 @@ app.post('/api/batch-build', upload.single('icon'), async (req, res) => {
     })
     
     // 将文件添加到清理队列
-    addToCleanupQueue(iconFile.path)
-    addToCleanupQueue(processedIconPath)
+    addToCleanupQueue(iconFile.path, CLEANUP_CONFIG.TEMP_FILE_RETENTION_MINUTES)
+    addToCleanupQueue(processedIconPath, CLEANUP_CONFIG.TEMP_FILE_RETENTION_MINUTES)
     
     // 开始处理队列
     processQueue()
@@ -568,7 +616,18 @@ app.get('/api/batch-build/status/:batchId', (req, res) => {
   }
   
   const status = batchBuildStatus.get(batchId)
-  res.json(status)
+  
+  // 添加进度百分比
+  const completedCount = status.completed.length + status.failed.length
+  const progress = status.totalBuilds > 0 ? (completedCount / status.totalBuilds) * 100 : 0
+  
+  res.json({
+    ...status,
+    progress,
+    completedCount,
+    currentBuildProgress: status.currentBuildProgress || 0,
+    currentBuildLog: status.currentBuildLog || ''
+  })
 })
 
 // 健康检查

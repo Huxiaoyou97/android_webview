@@ -172,22 +172,22 @@ const BatchBuildForm = ({ onBatchStart, onBatchProgress, onBatchComplete, isBuil
   const pollBatchProgress = async (batchId) => {
     try {
       const response = await axios.get(`/api/batch-build/status/${batchId}`)
-      const { queue, completed, failed, currentBuild, totalBuilds, allCompleted } = response.data
+      const { queue, completed, failed, currentBuild, totalBuilds, allCompleted, currentBuildProgress, progress } = response.data
 
       // 更新进度
       const completedCount = completed.length
-      const progress = totalBuilds > 0 ? (completedCount / totalBuilds) * 100 : 0
+      const overallProgress = progress || (totalBuilds > 0 ? (completedCount / totalBuilds) * 100 : 0)
       const currentMessage = currentBuild ? 
         `正在构建: ${currentBuild.apkName} (${completedCount + 1}/${totalBuilds})` : 
         `等待开始...`
       
-      onBatchProgress(completedCount, totalBuilds, progress, currentMessage)
+      onBatchProgress(completedCount, totalBuilds, overallProgress, currentMessage, currentBuildProgress)
 
       if (allCompleted) {
         onBatchComplete(true, completed, failed)
       } else {
         // 继续轮询
-        setTimeout(() => pollBatchProgress(batchId), 2000)
+        setTimeout(() => pollBatchProgress(batchId), 1000) // 更频繁的轮询以获取更流畅的进度
       }
     } catch (error) {
       onBatchComplete(false)
