@@ -1,0 +1,211 @@
+# 修复版Dockerfile - 解决路径和权限问题
+# Stage 1: 构建前端
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app
+COPY deploy-ui/frontend/package*.json ./
+RUN npm install
+COPY deploy-ui/frontend .
+RUN npm run build
+
+# Stage 2: 主镜像
+FROM ubuntu:20.04
+
+# 设置非交互式安装
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+
+# 安装基础依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget \
+    unzip \
+    git \
+    python3 \
+    python3-pip \
+    openjdk-11-jdk-headless \
+    nginx \
+    supervisor \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装Node.js 18
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# 动态检测并设置Java路径
+RUN JAVA_DIR=$(find /usr/lib/jvm -name "java-11-openjdk-*" -type d | head -1) && \
+    echo "export JAVA_HOME=$JAVA_DIR" >> /etc/environment && \
+    echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> /etc/environment
+
+# 设置Android SDK环境
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+
+# 安装Android SDK
+RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
+    cd /tmp && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
+    unzip -q commandlinetools-linux-9477386_latest.zip && \
+    mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest && \
+    rm commandlinetools-linux-9477386_latest.zip
+
+# 设置Java环境并安装Android组件
+RUN export JAVA_HOME=$(find /usr/lib/jvm -name "java-11-openjdk-*" -type d | head -1) && \
+    export PATH=$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH && \
+    yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true && \
+    $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制并安装后端依赖
+COPY deploy-ui/backend/package*.json ./backend/
+RUN cd backend && npm install --production
+
+# 复制后端代码
+COPY deploy-ui/backend ./backend
+
+# 复制前端构建结果
+COPY --from=frontend-builder /app/dist ./backend/dist
+
+# 复制整个Android项目到workspace（关键修复）
+COPY . /app/workspace
+
+# 确保复制所有gradle相关文件（关键！）
+COPY gradle /app/workspace/gradle/
+COPY gradlew /app/workspace/
+COPY gradlew.bat /app/workspace/
+COPY gradle.properties /app/workspace/
+COPY settings.gradle /app/workspace/
+COPY build.gradle /app/workspace/
+COPY key.properties /app/workspace/
+
+# 复制所有签名文件和配置
+COPY *.jks /app/workspace/
+COPY deploy /app/workspace/deploy/
+COPY app /app/workspace/app/
+
+# 确保所有必要的目录存在并设置正确权限
+RUN mkdir -p \
+    /app/backend/uploads \
+    /app/backend/builds \
+    /app/backend/public \
+    /app/keystores \
+    /app/logs \
+    /app/ssl \
+    /run/nginx \
+    /app/workspace/deploy \
+    /app/workspace/app/build/outputs/apk/release \
+    /app/workspace/deploy/keystores && \
+    chmod -R 755 /app/workspace && \
+    chmod +x /app/workspace/deploy/*.sh 2>/dev/null || true && \
+    chmod +x /app/workspace/gradlew && \
+    # 复制keystore文件
+    cp /app/workspace/deploy/keystores/*.jks /app/keystores/ 2>/dev/null || true && \
+    cp /app/workspace/*.jks /app/keystores/ 2>/dev/null || true
+
+# 验证关键文件是否存在
+RUN echo "检查关键文件..." && \
+    ls -la /app/workspace/gradle/wrapper/ && \
+    ls -la /app/workspace/*.gradle && \
+    ls -la /app/workspace/gradlew && \
+    ls -la /app/workspace/deploy/keystores/ || true
+
+# 初始化Gradle（下载wrapper）
+RUN cd /app/workspace && \
+    ./gradlew --version || echo "Gradle将在首次构建时初始化"
+
+# Nginx配置
+RUN echo 'server { \n\
+    listen 80 default_server; \n\
+    client_max_body_size 50M; \n\
+    client_body_timeout 300s; \n\
+    \n\
+    location / { \n\
+        proxy_pass http://127.0.0.1:3001; \n\
+        proxy_set_header Host $host; \n\
+        proxy_set_header X-Real-IP $remote_addr; \n\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \n\
+        proxy_set_header X-Forwarded-Proto $scheme; \n\
+        proxy_connect_timeout 600; \n\
+        proxy_send_timeout 600; \n\
+        proxy_read_timeout 600; \n\
+        send_timeout 600; \n\
+    } \n\
+    \n\
+    location /health { \n\
+        access_log off; \n\
+        return 200 "healthy"; \n\
+        add_header Content-Type text/plain; \n\
+    } \n\
+}' > /etc/nginx/sites-available/default
+
+RUN rm -f /etc/nginx/sites-enabled/default && \
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+
+# Supervisor配置
+RUN mkdir -p /etc/supervisor/conf.d && \
+    echo '[supervisord] \n\
+nodaemon=true \n\
+logfile=/app/logs/supervisord.log \n\
+pidfile=/var/run/supervisord.pid \n\
+\n\
+[program:nginx] \n\
+command=/usr/sbin/nginx -g "daemon off;" \n\
+autostart=true \n\
+autorestart=true \n\
+stderr_logfile=/app/logs/nginx.err.log \n\
+stdout_logfile=/app/logs/nginx.out.log \n\
+priority=1 \n\
+\n\
+[program:backend] \n\
+command=/bin/bash -c "source /etc/environment && cd /app/backend && node server.js" \n\
+directory=/app/backend \n\
+autostart=true \n\
+autorestart=true \n\
+environment=NODE_ENV="production",PORT="3001" \n\
+stderr_logfile=/app/logs/backend.err.log \n\
+stdout_logfile=/app/logs/backend.out.log \n\
+priority=2' > /etc/supervisor/conf.d/supervisord.conf
+
+# 启动脚本
+RUN echo '#!/bin/bash \n\
+echo "🚀 Starting Android WebView Builder..." \n\
+\n\
+# 加载环境变量 \n\
+source /etc/environment \n\
+\n\
+# 设置Java路径 \n\
+export JAVA_HOME=$(find /usr/lib/jvm -name "java-11-openjdk-*" -type d | head -1) \n\
+export PATH=$PATH:$JAVA_HOME/bin \n\
+\n\
+echo "Java Home: $JAVA_HOME" \n\
+echo "Workspace: /app/workspace" \n\
+echo "Uploads: /app/backend/uploads" \n\
+\n\
+# 确保目录存在 \n\
+mkdir -p /app/logs /app/backend/uploads /app/backend/builds \n\
+\n\
+# 测试nginx \n\
+nginx -t \n\
+\n\
+# 启动supervisor \n\
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /app/start.sh && \
+chmod +x /app/start.sh
+
+# 暴露端口
+EXPOSE 80 443 3001
+
+# 数据卷
+VOLUME ["/app/backend/uploads", "/app/backend/builds", "/app/keystores", "/app/logs"]
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3001/health || curl -f http://localhost/health || exit 1
+
+# 启动
+CMD ["/app/start.sh"]

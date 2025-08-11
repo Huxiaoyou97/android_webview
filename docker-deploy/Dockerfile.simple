@@ -1,0 +1,121 @@
+# 简化版Dockerfile - 确保所有文件正确复制
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app
+COPY deploy-ui/frontend/package*.json ./
+RUN npm install
+COPY deploy-ui/frontend .
+RUN npm run build
+
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+
+# 安装所有依赖（使用Java 17）
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates curl wget unzip git python3 python3-pip \
+    openjdk-17-jdk-headless nginx supervisor && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 安装Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 设置Java 17环境
+RUN echo "export JAVA_HOME=$(find /usr/lib/jvm -name 'java-17-openjdk-*' -type d | head -1)" >> /etc/environment
+
+# Android SDK
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+
+RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
+    cd /tmp && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
+    unzip -q commandlinetools-linux-9477386_latest.zip && \
+    mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest && \
+    rm commandlinetools-linux-9477386_latest.zip
+
+# 安装Android组件（使用Java 17）
+RUN export JAVA_HOME=$(find /usr/lib/jvm -name "java-17-openjdk-*" -type d | head -1) && \
+    export PATH=$JAVA_HOME/bin:$PATH && \
+    java -version && \
+    yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true && \
+    $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+WORKDIR /app
+
+# 复制后端
+COPY deploy-ui/backend/package*.json ./backend/
+RUN cd backend && npm install --production
+COPY deploy-ui/backend ./backend
+COPY --from=frontend-builder /app/dist ./backend/dist
+
+# 复制整个项目（最重要！包含所有文件）
+COPY . /app/workspace/
+
+# 设置权限和创建目录
+RUN chmod -R 755 /app/workspace && \
+    chmod +x /app/workspace/gradlew && \
+    chmod +x /app/workspace/deploy/*.sh || true && \
+    mkdir -p /app/backend/uploads /app/backend/builds /app/logs && \
+    mkdir -p /app/workspace/app/build/outputs/apk/release && \
+    touch /app/logs/supervisord.log /app/logs/backend.log /app/logs/nginx.log && \
+    chmod 777 /app/logs /app/backend/uploads /app/backend/builds
+
+# 验证关键文件和测试gradle
+RUN echo "验证关键文件..." && \
+    ls -la /app/workspace/gradle/wrapper/ && \
+    ls -la /app/workspace/gradlew && \
+    echo "测试Gradle和Java..." && \
+    cd /app/workspace && \
+    export JAVA_HOME=$(find /usr/lib/jvm -name "java-17-openjdk-*" -type d | head -1) && \
+    export PATH=$JAVA_HOME/bin:$PATH && \
+    java -version && \
+    ./gradlew --version && \
+    echo "Gradle验证完成"
+
+# Nginx配置
+RUN echo 'server { \n\
+    listen 80; \n\
+    client_max_body_size 50M; \n\
+    location / { \n\
+        proxy_pass http://127.0.0.1:3001; \n\
+        proxy_set_header Host $host; \n\
+        proxy_set_header X-Real-IP $remote_addr; \n\
+    } \n\
+}' > /etc/nginx/sites-available/default && \
+    rm -f /etc/nginx/sites-enabled/default && \
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+
+# Supervisor配置
+RUN echo '[supervisord] \n\
+nodaemon=true \n\
+logfile=/app/logs/supervisord.log \n\
+\n\
+[program:nginx] \n\
+command=/usr/sbin/nginx -g "daemon off;" \n\
+autostart=true \n\
+stderr_logfile=/app/logs/nginx-error.log \n\
+stdout_logfile=/app/logs/nginx-access.log \n\
+\n\
+[program:backend] \n\
+command=node /app/backend/server.js \n\
+directory=/app/backend \n\
+environment=NODE_ENV="production",PORT="3001" \n\
+stderr_logfile=/app/logs/backend-error.log \n\
+stdout_logfile=/app/logs/backend.log' > /etc/supervisor/conf.d/supervisord.conf
+
+# 启动脚本
+RUN echo '#!/bin/bash \n\
+export JAVA_HOME=$(find /usr/lib/jvm -name "java-17-openjdk-*" -type d | head -1) \n\
+export PATH=$PATH:$JAVA_HOME/bin \n\
+echo "Java version:" \n\
+java -version \n\
+mkdir -p /app/logs \n\
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf' > /app/start.sh && \
+chmod +x /app/start.sh
+
+EXPOSE 80
+CMD ["/app/start.sh"]

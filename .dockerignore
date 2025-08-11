@@ -1,0 +1,55 @@
+# Node modules
+**/node_modules
+**/npm-debug.log
+**/yarn-error.log
+
+# Build outputs
+**/dist
+**/build
+**/builds
+app/build/
+app/release/
+
+# Uploads and temporary files
+deploy-ui/backend/uploads/*
+deploy-ui/backend/builds/*
+deploy-ui/backend/public/*
+
+# Git files
+.git
+.gitignore
+
+# IDE files
+.idea
+.vscode
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+LICENSE
+
+# Test files
+**/test
+**/tests
+**/__tests__
+
+# Logs
+*.log
+logs/
+
+# Data directory (if created)
+data/
+
+# Gradle cache (but keep wrapper jar!)
+.gradle/
+# 不要忽略gradle-wrapper.jar，它是必需的！
+# gradle/wrapper/gradle-wrapper.jar

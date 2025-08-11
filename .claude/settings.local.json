@@ -13,7 +13,10 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(cp:*)",
-      "Bash(./gradlew:*)"
+      "Bash(./gradlew:*)",
+      "Bash(docker:*)",
+      "Bash(make:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

@@ -665,6 +665,15 @@ app.post('/api/cleanup/manual', (req, res) => {
   })
 })
 
+// 健康检查端点
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  })
+})
+
 // 前端路由回退 - 处理SPA路由
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'))

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  android-webview-builder:
+    image: android-webview-builder:latest
+    container_name: android-webview-builder
+    ports:
+      - "8080:80"      # HTTP端口
+      - "8443:443"     # HTTPS端口（如需要）
+    volumes:
+      # 持久化数据目录
+      - ./data/uploads:/app/backend/uploads
+      - ./data/builds:/app/backend/builds
+      - ./data/keystores:/app/keystores
+      - ./data/logs:/app/logs
+      # SSL证书（如需要）
+      - ./ssl:/app/ssl:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # 可选：配置APK清理时间（分钟）
+      - APK_RETENTION_MINUTES=30
+      - TEMP_FILE_RETENTION_MINUTES=10
+      - CLEANUP_INTERVAL_MINUTES=5
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
